@@ -173,7 +173,7 @@ def Funcion_Fitness(distancias, poblacion):
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 200
+    Num_Generaciones = 3000
     Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
@@ -206,17 +206,19 @@ if __name__ == "__main__":
     
     Ev1 = EvolutiveClass(Num_Individuos, Num_Generaciones, Tam_Individuos,numero_supply_depots, Prob_Padres, Prob_Mutacion, Prob_Cruce)
     #Ev1.ImprimirInformacion()
-    Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots,)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
+    Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
     for i in range(Num_Generaciones):
         Pob_Actual = Ev1.Cruce(Pob_Inicial, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
         Fitness = Funcion_Fitness(distancias_euclideas, Pob_Actual)
         Pob_Actual, Costes = Ev1.Seleccion(Pob_Actual,Fitness)
-    Sol_Final = Pob_Actual[0]   #La primera población será la que tenga menor coste
+    Sol_Final = Pob_Actual[0]   #El primer individuo de la población será el que tenga menor coste
     Coste_Final = Costes[0]
     print("Solución final:")
     for j in range(Tam_Individuos):
         print("Base " + str(j) + "-> SD: " + str(Sol_Final[j]))
     print("Coste de la solución: " + str(Coste_Final))
+
+
     # Graficar el mapa y los puntos
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')

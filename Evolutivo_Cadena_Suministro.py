@@ -40,7 +40,7 @@ class EvolutiveClass:
             Num_Max = self.Num_Max
         Pob_Ini = np.random.randint(0,Num_Max, size=(Fil,Col))  #Son los índices de los SD asignados a cada base
         for i in range(Fil):    #Comprobamos todos los individuos y los reparamos si estuvieran mal
-            if(self.Comprobacion_Individuo(Pob_Ini[i], Capacidades)):
+            if(self.Comprobacion_Individuo(Pob_Ini[i], Capacidades, distancias_euclideas)):
                 Pob_Ini[i] = self.Reparacion_Mayor_Menor(Pob_Ini[i], Capacidades)
         return Pob_Ini
 
@@ -68,7 +68,7 @@ class EvolutiveClass:
             Hijo[np.where(vector==1)[0]] = Padre2[np.where(vector==1)[0]]       # Los genes seleccionados del padre 2 pasan al hijo
             if np.random.rand() < self.Prob_Mutacion:                           # Se comprueba si el hijo va a mutar
                 Hijo = self.Mutacion(Hijo, Num_Max)
-            if(self.Comprobacion_Individuo(Hijo, capacidades)):                    # Se comprueba si hay que reparar el hijo
+            if(self.Comprobacion_Individuo(Hijo, capacidades, distancias_euclideas)):                    # Se comprueba si hay que reparar el hijo
                  Hijo = self.Reparacion_Mayor_Menor(Hijo, capacidades)
             poblacion = np.insert(poblacion,self.Num_Padres+i,Hijo, axis = 0)   # Se añade a la población una vez que ha mutado y se ha reparado
         return poblacion
@@ -78,10 +78,21 @@ class EvolutiveClass:
         aux2 = np.random.randint(0,Num_Max)                                   # Se genera el número a modificar
         individuo[aux1] = aux2        
         return individuo
-    def Comprobacion_Individuo (self, individuo, capacidades):
+    def Comprobacion_Individuo (self, individuo, capacidades, distancias):
         for i in range(self.Num_Max):
             indices_bases = [j for j, value in enumerate(individuo) if value == i]  #Obtenemos los indices de las bases asociadas a un SD "i"
             comprobar_capacidades = capacidades[indices_bases]
+            ind_inter = np.where(individuo[len(bases):] == i)[0]  # Buscamos qué intermediarios tienen ese SD asociado
+            for k in ind_inter:  # Comprobamos para esos intermediarios sus distancias con el SD y con las bases cercanas
+                contador = 0    #Con este contador vamos sumando las capacidades de las bases que coteja el intermediario
+                for j in indices_bases:
+                    distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases[j], intermediarios[k])  #Distancia entre una base y el intermediario
+                    k = k + len(bases)  #Corregimos el índice para adaptarlo al array de las capacidades
+                    if distancia_base_inter[0][0] < distancias[i][j] and comprobar_capacidades[j] <= (comprobar_capacidades[k] - contador):
+                        # Si esa distancia es menor que la de la base al SD
+                        # y la capacidad de la base es menor o igual que la diferencia entre la cap del intermediario y la suma de cap de las bases que contempla...
+                        comprobar_capacidades[j] = 0    #No contemplamos la capacidad de esa base -> Va englobada en la capacidad del intermediario
+                        contador += capacidades[j]  #Sumamos esa capacidad al contador y vemos la siguiente base
             if sum(comprobar_capacidades) > 200:    #Si la suma de las capacidades de una solucion para un supply depot es mayor que 200 -> REPARACION
                 return True
             else:
@@ -163,9 +174,17 @@ def Funcion_Fitness(distancias, poblacion):
     lista_fitness = []
     for i in range(len(poblacion)):    #Aplicamos la función fitness a cada solución
         fitness = 0
-        for j in range(numero_bases):
-            SD = poblacion[i][j]    #Saco el SD asociado a una base de la población
-            fitness += distancias[SD][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
+        for j in range(len(bases)):   #Bucle para recorrer bases que no sean intermediarios
+            SD_base = poblacion[i][j]    #Saco el SD asociado a una base de la población
+            ind_inter = np.where(poblacion[i][len(bases):] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
+            #ind_inter += len(bases) #Corregimos los índices del array anterior para adaptarlo al array de la solución
+            for k in ind_inter: #Comprobamos para esos intermediarios sus distancias con la base elegida
+                distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases[j], intermediarios[k])
+                if distancia_base_inter[0][0] < distancias[SD_base][j]:   #Si esa distancia es menor que la de la base al SD
+                    fitness += distancia_base_inter[0][0]  # Calculo fitness usando la distancia de la base al intermediario
+                else:
+                    continue
+            fitness += distancias[SD_base][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
         fitness = fitness/numero_bases
         lista_fitness.append(fitness)
     return lista_fitness
@@ -173,7 +192,7 @@ def Funcion_Fitness(distancias, poblacion):
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 3000
+    Num_Generaciones = 200
     Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
@@ -187,13 +206,18 @@ if __name__ == "__main__":
     puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
+    intermediarios = random.sample(bases,int(len(bases)*0.2))   #Extraigo intermediarios de forma aleatoria
+    bases = list(set(bases) - set(intermediarios))  #Actualizamos el número de bases sin contar intermediarios
+    longitudes_inter, latitudes_inter = zip(*intermediarios)
     longitudes_bases, latitudes_bases = zip(*bases)
-    capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
+    capacidad_bases = np.random.randint(1, capacidad_maxima, size=(len(bases)))
+    capacidad_inters = np.random.randint(10, capacidad_maxima, size=(len(intermediarios)))  #Les doy capacidades
+    capacidad_bases = np.concatenate((capacidad_bases, capacidad_inters))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
-    distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
+    distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases+intermediarios, supply_depots) #Obtenemos distancias de bases a supply depots
     #distancias_euclideas_orden = []
     #for j in indices_capacidad_bases:
     #    distancias_euclideas_aux = []
@@ -208,6 +232,7 @@ if __name__ == "__main__":
     #Ev1.ImprimirInformacion()
     Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
     for i in range(Num_Generaciones):
+        print(("Generación: " + str(i+1)))
         Pob_Actual = Ev1.Cruce(Pob_Inicial, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
         Fitness = Funcion_Fitness(distancias_euclideas, Pob_Actual)
         Pob_Actual, Costes = Ev1.Seleccion(Pob_Actual,Fitness)
@@ -222,6 +247,7 @@ if __name__ == "__main__":
     # Graficar el mapa y los puntos
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
     for k in range(Tam_Individuos):
         plt.plot([longitudes_bases[k],longitudes_supply_depots[Sol_Final[k]]], [latitudes_bases[k], latitudes_supply_depots[Sol_Final[k]]],color='red')

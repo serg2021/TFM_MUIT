@@ -16,35 +16,21 @@ class Fitness(AbsObjectiveFunc):
         return Funcion_Fitness(distancias_euclideas, solution)
 
     def random_solution(self):  #Generamos una población inicial -> Solo indicamos cómo serán las soluciones de la población y las reparamos una vez se generen, el resto lo hace el algoritmo
-        lista_pob_ini = list(np.zeros(numero_supply_depots))
-        for _ in range(poblacion_inicial):
-            sublista1 = []
-            for _ in range(numero_supply_depots):
-                sublista2 = list(np.zeros(numero_bases))
-                sublista1.append(sublista2)
-            lista_pob_ini.append(sublista1)
-        Pob_Ini = np.random.randint(0, numero_supply_depots, size=self.size)  # Solución tipo
-        if(Comprobacion_Individuo(Pob_Ini, capacidad_bases, distancias_euclideas)):
-            Pob_Ini, lista_pob_ini = Reparacion_Mayor_Menor(Pob_Ini, capacidad_bases, distancias_euclideas)
-        return Pob_Ini, lista_pob_ini
+        Pob_Ini = np.random.randint(0, numero_supply_depots, size=(2, self.size))  # Solución tipo -> 2 FILAS: 1 solución y otra para lista de bases a inters
+        if(Comprobacion_Individuo(Pob_Ini[0], capacidad_bases, distancias_euclideas)):
+            Pob_Ini = Reparacion_Mayor_Menor(Pob_Ini, capacidad_bases, distancias_euclideas)
+        return Pob_Ini
 
     def repair_solution(self, solution):    #Reparación de individuos
-        lista_solution = list(np.zeros(numero_supply_depots))
-        for _ in range(poblacion_inicial):
-            sublista1 = []
-            for _ in range(numero_supply_depots):
-                sublista2 = list(np.zeros(numero_bases))
-                sublista1.append(sublista2)
-            lista_solution.append(sublista1)
         for i in range(numero_bases):
-            if solution[i] > 9 or solution[i] < 0:
-                solution[i] = np.random.randint(0, numero_supply_depots)
-        if (Comprobacion_Individuo(solution, capacidad_bases, distancias_euclideas)):
-            solution, lista_solution = Reparacion_Mayor_Menor(solution, capacidad_bases, distancias_euclideas)
+            if solution[0][i] > 9 or solution[0][i] < 0:
+                solution[0][i] = np.random.randint(0, numero_supply_depots)
+        if (Comprobacion_Individuo(solution[0], capacidad_bases, distancias_euclideas)):
+            solution = Reparacion_Mayor_Menor(solution, capacidad_bases, distancias_euclideas)
             #Lo hemos reparado en base a la capacidad -> PERO NO EN BASE A LOS SD POSIBLES -> SALEN VALORES DE SD QUE NO SON
             #Tenemos que añadir AQUÍ una forma de repararlo -> Lo más sencillo es hacer un bucle que recorra cada elemento de la solución y
             #Cambiar esos valores por otros aleatorios que estén dentro del rango
-        return solution, lista_solution
+        return solution
 
 def Puntos_Sin_Repetir(num_points, offset=0.5):
     points = set()  # Usamos un conjunto para evitar duplicados
@@ -77,10 +63,10 @@ def Distancia_Base_Supply_Depot_2D(base, supply):
 def Funcion_Fitness(distancias, individuo):
     fitness = 0
     for j in range(len(individuo)):   #Bucle para recorrer bases que no sean intermediarios
-        SD_base = individuo[j]    #Saco el SD asociado a una base de la población
+        SD_base = individuo[0][j]    #Saco el SD asociado a una base de la población
         if(SD_base > 9 or SD_base < 0 or isinstance(SD_base, float)):   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
             SD_base = np.random.randint(0,numero_supply_depots)                                   # Se genera el número a modificar
-        ind_inter = np.where(individuo[ind_intermediarios] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
+        ind_inter = np.where(individuo[0][ind_intermediarios] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
         for k in ind_inter: #Comprobamos para esos intermediarios sus distancias con la base elegida
             distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[k])
             if distancia_base_inter < distancias[SD_base][j]:   #Si esa distancia es menor que la de la base al SD
@@ -120,13 +106,12 @@ def Comprobacion_Individuo (individuo, capacidades, distancias):
 def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos una base de un SD por otra (aleatoriamente) -> Hasta cumplir restricción
     capacidades_sd = list(np.zeros(numero_supply_depots))  # Capacidades de los SD
     suma_capacidades = list(np.zeros(numero_supply_depots))  # Suma de las capacidades de las bases
-    lista_ind_bases_inter = list(np.zeros(numero_supply_depots))
     for i in range(numero_supply_depots):
         capacidades_sd_i = list(np.zeros(numero_bases))  # Array auxiliar del tamaño del número de bases para almacenar las capacidades
-        indices_bases = np.where(individuo[ind_bases_antes] == i)[0]  #Obtenemos los indices de las bases asociadas a un SD "i"
+        indices_bases = np.where(individuo[0][ind_bases_antes] == i)[0]  #Obtenemos los indices de las bases asociadas a un SD "i"
         for ind in ind_bases_antes[indices_bases]:
             capacidades_sd_i[ind] = capacidades[ind]   #Copiamos las capacidades originales en otra variable auxiliar
-        ind_inter = np.where(individuo[ind_intermediarios] == i)[0]  # Buscamos qué intermediarios tienen ese SD asociado
+        ind_inter = np.where(individuo[0][ind_intermediarios] == i)[0]  # Buscamos qué intermediarios tienen ese SD asociado
         for ind in ind_intermediarios[ind_inter]:
             capacidades_sd_i[ind] = capacidades[ind]   #Copiamos las capacidades originales en otra variable auxiliar
         capacidades_sd[i] = capacidades_sd_i
@@ -144,7 +129,7 @@ def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos un
                     capacidades_sd_i[j] = 0  # No contemplamos la capacidad de esa base -> Va englobada en la capacidad del intermediario
                     contador += capacidades[j]  # Sumamos esa capacidad al contador y vemos la siguiente base
                     indices_bases_inter[j] = k  #Guardamos el valor del intermediario en la posición de la base
-            lista_ind_bases_inter[i] = indices_bases_inter   #Añadimos en el indice que corresponde con el número del SD los índices recogidos
+            individuo[1] = indices_bases_inter   #Añadimos en el indice que corresponde con el número del SD los índices recogidos
         suma_capacidades[i] = sum(capacidades_sd_i)  # Almacenamos todas las sumas de las capacidades en un array
 
     # YA TENEMOS LAS CAPACIDADES COPIADAS -> PROCEDEMOS A LA COMPROBACIÓN
@@ -152,21 +137,21 @@ def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos un
     Caps_SD_Superadas = [ind_cap for ind_cap, j in enumerate(suma_capacidades) if j > 200]  #Comprobamos en qué SD's se han superado la capacidad
     for k in Caps_SD_Superadas:
         while True:
-            indices_bases_inters_SD = [j for j, value in enumerate(individuo) if value == k]    #Obtenemos índices de las bases cuya suma de caps supera el umbral
-            indices_resto_bases = [j for j, value in enumerate(individuo) if value != k]  # Obtenemos índices del resto de bases
+            indices_bases_inters_SD = [j for j, value in enumerate(individuo[0]) if value == k]    #Obtenemos índices de las bases cuya suma de caps supera el umbral
+            indices_resto_bases = [j for j, value in enumerate(individuo[0]) if value != k]  # Obtenemos índices del resto de bases
             capacidades_bases_SD_ordenados = list(np.argsort([capacidades[i] for i in indices_bases_inters_SD])[::-1])
             indices_bases_SD_ordenados = [indices_bases_inters_SD[i] for i in capacidades_bases_SD_ordenados]
 
             indice_base_1 = indices_bases_SD_ordenados[0] #Elegimos la base del SD con mayor capacidad
             indice_base_aleatoria_2 = random.choice([value for value in indices_resto_bases if capacidades[value] < capacidades[indice_base_1]])  # Elección aleatoria de la base del resto de bases
-            individuo[indice_base_1], individuo[indice_base_aleatoria_2] = individuo[indice_base_aleatoria_2], individuo[indice_base_1] #Intercambio posiciones de las bases
+            individuo[0][indice_base_1], individuo[0][indice_base_aleatoria_2] = individuo[0][indice_base_aleatoria_2], individuo[0][indice_base_1] #Intercambio posiciones de las bases
             #indices_bases_reparadas = [j for j, value in enumerate(individuo) if value == k]    #Obtenemos índices de las bases cuya suma de caps supera el umbral
 
-            indices_bases = np.where(individuo[ind_bases_antes] == k)[0]  # Obtenemos los indices de las bases asociadas a un SD "i"
+            indices_bases = np.where(individuo[0][ind_bases_antes] == k)[0]  # Obtenemos los indices de las bases asociadas a un SD "i"
             capacidades_sd_i = list(np.zeros(numero_bases))  # Array auxiliar del tamaño del número de bases para almacenar las capacidades
             for ind in ind_bases_antes[indices_bases]:
                 capacidades_sd_i[ind] = capacidades[ind]  # Copiamos las capacidades originales en otra variable auxiliar
-            ind_inter = np.where(individuo[ind_intermediarios] == k)[0]  # Buscamos qué intermediarios tienen ese SD asociado
+            ind_inter = np.where(individuo[0][ind_intermediarios] == k)[0]  # Buscamos qué intermediarios tienen ese SD asociado
             for ind in ind_intermediarios[ind_inter]:
                 capacidades_sd_i[ind] = capacidades[ind]  # Copiamos las capacidades originales en otra variable auxiliar
             capacidades_sd[k] = capacidades_sd_i
@@ -184,12 +169,12 @@ def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos un
                         capacidades_sd_i[j] = 0  # No contemplamos la capacidad de esa base -> Va englobada en la capacidad del intermediario
                         contador += capacidades[j]  # Sumamos esa capacidad al contador y vemos la siguiente base
                         indices_bases_inter[j] = v  # Guardamos el valor del intermediario en la posición de la base
-                lista_ind_bases_inter[k] = indices_bases_inter  # Añadimos en el indice que corresponde con el número del SD los índices recogidos
+                individuo[1] = indices_bases_inter  # Añadimos en el indice que corresponde con el número del SD los índices recogidos
             if sum(capacidades_sd_i) > 200: #Si es más de 200, volvemos a hacer mismo código del while
                 continue
             else: #Si no, salimos del while y avanzamos en el for
                 break
-    return individuo, lista_ind_bases_inter
+    return individuo
 
 if __name__ == "__main__":
 
@@ -237,7 +222,7 @@ if __name__ == "__main__":
 
         "stop_cond": "Ngen",   #Condición de parada
         "time_limit": 4000.0,   #Tiempo límite (real, no de CPU) de ejecución
-        "Ngen": 100,  #Número de generaciones
+        "Ngen": 20,  #Número de generaciones
         "Neval": 3e3,   #Número de evaluaciones de la función objetivo
         "fit_target": 50,   #Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 
@@ -249,7 +234,7 @@ if __name__ == "__main__":
         "dyn_method": "success",    #Determina la probabilidad de elegir un substrato para cada coral en la siguiente generación -> Con 'success' usa el ratio de larvas exitosas en cada generación
         "dyn_metric": "best",    #Determina cómo agregar los valores de cada substrato para obtener la medida de cada uno
         "dyn_steps": 10,    #Número de evaluaciones por cada substrato
-        "prob_amp": 0.001    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
+        "prob_amp": 0.01    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
     }
 
     operators = [
@@ -264,7 +249,7 @@ if __name__ == "__main__":
 
     print("Solución final:")
     for j in range(numero_bases):
-        print("Base " + str(j) + "-> SD: " + str(solution[j]))
+        print("Base " + str(j) + "-> SD: " + str(solution[0][j]))
     print("Coste final: " + str(obj_value))
 
     #Graficamos la solución
@@ -276,18 +261,17 @@ if __name__ == "__main__":
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
     for v in range(len(ind_intermediarios)):
-        for l in range(numero_supply_depots):
-            if isinstance(Lista_Final[l], float):
-                Lista_Final[l] = list(np.zeros(numero_bases))
-            base_indices = [i for i, x in enumerate(Lista_Final[l]) if x == ind_intermediarios[v]]
-            for j in base_indices:
-                plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
-            lista_base_indices.extend(base_indices)
+        if isinstance(solution[1], float):
+            solution[1] = list(np.zeros(numero_bases))
+        base_indices = [i for i, x in enumerate(solution[1]) if x == ind_intermediarios[v]]
+        for j in base_indices:
+            plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
+        lista_base_indices.extend(base_indices)
     for k in range(numero_bases):
         if k not in lista_base_indices:
-            plt.plot([longitudes_bases[k],longitudes_supply_depots[solution[k]]], [latitudes_bases[k], latitudes_supply_depots[solution[k]]],color='red')
+            plt.plot([longitudes_bases[k],longitudes_supply_depots[solution[0][k]]], [latitudes_bases[k], latitudes_supply_depots[solution[0][k]]],color='red')
         if k in ind_intermediarios:
-            plt.plot([longitudes_bases[k],longitudes_supply_depots[solution[k]]], [latitudes_bases[k], latitudes_supply_depots[solution[k]]],color='red')
+            plt.plot([longitudes_bases[k],longitudes_supply_depots[solution[0][k]]], [latitudes_bases[k], latitudes_supply_depots[solution[0][k]]],color='red')
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')

@@ -23,14 +23,14 @@ class Fitness(AbsObjectiveFunc):
         return Pob_Ini
 
     def repair_solution(self, solution):    #Reparación de individuos
+        for i in range(numero_bases):
+            if solution[i] > 9 or solution[i] < 0:
+                solution[i] = np.random.randint(0, numero_supply_depots)
         if (Comprobacion_Individuo(solution, capacidad_bases)):
             solution = Reparacion_Mayor_Menor(solution, capacidad_bases)
             #Lo hemos reparado en base a la capacidad -> PERO NO EN BASE A LOS SD POSIBLES -> SALEN VALORES DE SD QUE NO SON
             #Tenemos que añadir AQUÍ una forma de repararlo -> Lo más sencillo es hacer un bucle que recorra cada elemento de la solución y
             #Cambiar esos valores por otros aleatorios que estén dentro del rango
-        for i in range(numero_bases):
-            if solution[i] > 9 or solution[i] < 0:
-                solution[i] = np.random.randint(0, numero_supply_depots)
         return solution
 
 def Puntos_Sin_Repetir(num_points, offset=0.5):

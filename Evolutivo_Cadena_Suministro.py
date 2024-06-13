@@ -339,7 +339,7 @@ def Funcion_Fitness(distancias, poblacion):
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 10
+    Num_Generaciones = 100
     Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
@@ -359,8 +359,8 @@ if __name__ == "__main__":
     intermediarios = [bases[i] for i in ind_intermediarios]
     ind_bases_antes = np.array([i for i, elemento in enumerate(bases) if elemento not in intermediarios])
     bases = list(set(bases) - set(intermediarios))  #Actualizamos el número de bases sin contar intermediarios
-    longitudes_inter, latitudes_inter = zip(*intermediarios)
     longitudes_bases, latitudes_bases = zip(*bases)
+    longitudes_inter, latitudes_inter = zip(*intermediarios)
     capacidad_bases[ind_bases_antes] = np.random.randint(1, capacidad_maxima, size=len(bases))
     capacidad_bases[ind_intermediarios] = np.random.randint(10, capacidad_maxima, size=len(intermediarios))
     capacidad_bases = list(capacidad_bases)
@@ -405,8 +405,12 @@ if __name__ == "__main__":
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    bases = puntos[:numero_bases]
+    longitudes_bases, latitudes_bases = zip(*bases)
     for v in range(len(ind_intermediarios)):
         for l in range(numero_supply_depots):
+            if isinstance(Lista_Final[l], float):
+                Lista_Final[l] = list(np.zeros(numero_bases))
             base_indices = [i for i, x in enumerate(Lista_Final[l]) if x == ind_intermediarios[v]]
             for j in base_indices:
                 plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
@@ -415,7 +419,7 @@ if __name__ == "__main__":
         if k not in lista_base_indices:
             plt.plot([longitudes_bases[k],longitudes_supply_depots[Sol_Final[k]]], [latitudes_bases[k], latitudes_supply_depots[Sol_Final[k]]],color='red')
         if k in ind_intermediarios:
-            plt.plot([longitudes_inter[k],longitudes_supply_depots[Sol_Final[k]]], [latitudes_inter[k], latitudes_supply_depots[Sol_Final[k]]],color='red')
+            plt.plot([longitudes_bases[k],longitudes_supply_depots[Sol_Final[k]]], [latitudes_bases[k], latitudes_supply_depots[Sol_Final[k]]],color='red')
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')

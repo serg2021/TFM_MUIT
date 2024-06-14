@@ -62,7 +62,7 @@ def Distancia_Base_Supply_Depot_2D(base, supply):
     return dist
 def Funcion_Fitness(distancias, individuo):
     fitness = 0
-    for j in range(len(individuo)):   #Bucle para recorrer bases que no sean intermediarios
+    for j in range(len(individuo[0])):   #Bucle para recorrer bases que no sean intermediarios
         SD_base = individuo[0][j]    #Saco el SD asociado a una base de la población
         if(SD_base > 9 or SD_base < 0 or isinstance(SD_base, float)):   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
             SD_base = np.random.randint(0,numero_supply_depots)                                   # Se genera el número a modificar
@@ -129,7 +129,11 @@ def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos un
                     capacidades_sd_i[j] = 0  # No contemplamos la capacidad de esa base -> Va englobada en la capacidad del intermediario
                     contador += capacidades[j]  # Sumamos esa capacidad al contador y vemos la siguiente base
                     indices_bases_inter[j] = k  #Guardamos el valor del intermediario en la posición de la base
-            individuo[1] = indices_bases_inter   #Añadimos en el indice que corresponde con el número del SD los índices recogidos
+                if indices_bases_inter[j] in ind_intermediarios:
+                    individuo[1][j] = indices_bases_inter[j]   #Añadimos en el indice que corresponde con el número del SD los índices recogidos
+        for s in range(numero_bases):
+            if individuo[1][s] not in ind_intermediarios:
+                individuo[1][s] = numero_bases  #Nos aseguramos de que el valor que no esté dentro de ind_intermediarios no interfiera
         suma_capacidades[i] = sum(capacidades_sd_i)  # Almacenamos todas las sumas de las capacidades en un array
 
     # YA TENEMOS LAS CAPACIDADES COPIADAS -> PROCEDEMOS A LA COMPROBACIÓN
@@ -169,7 +173,8 @@ def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos un
                         capacidades_sd_i[j] = 0  # No contemplamos la capacidad de esa base -> Va englobada en la capacidad del intermediario
                         contador += capacidades[j]  # Sumamos esa capacidad al contador y vemos la siguiente base
                         indices_bases_inter[j] = v  # Guardamos el valor del intermediario en la posición de la base
-                individuo[1] = indices_bases_inter  # Añadimos en el indice que corresponde con el número del SD los índices recogidos
+                    if indices_bases_inter[j] != 0:
+                        individuo[1][j] = indices_bases_inter[j]  # Añadimos en el indice que corresponde con el número del SD los índices recogidos
             if sum(capacidades_sd_i) > 200: #Si es más de 200, volvemos a hacer mismo código del while
                 continue
             else: #Si no, salimos del while y avanzamos en el for
@@ -222,7 +227,7 @@ if __name__ == "__main__":
 
         "stop_cond": "Ngen",   #Condición de parada
         "time_limit": 4000.0,   #Tiempo límite (real, no de CPU) de ejecución
-        "Ngen": 20,  #Número de generaciones
+        "Ngen": 120,  #Número de generaciones
         "Neval": 3e3,   #Número de evaluaciones de la función objetivo
         "fit_target": 50,   #Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 
@@ -268,6 +273,8 @@ if __name__ == "__main__":
             plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
         lista_base_indices.extend(base_indices)
     for k in range(numero_bases):
+        if isinstance(solution[0][k], float):
+            solution[0][k] = int(solution[0][k])
         if k not in lista_base_indices:
             plt.plot([longitudes_bases[k],longitudes_supply_depots[solution[0][k]]], [latitudes_bases[k], latitudes_supply_depots[solution[0][k]]],color='red')
         if k in ind_intermediarios:

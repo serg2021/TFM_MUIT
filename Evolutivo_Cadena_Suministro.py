@@ -139,7 +139,7 @@ class EvolutiveClass:
                 indices_bases_inter = list(np.full(numero_bases,numero_bases))  # Lista de índices de bases a intermediarios
                 for j in ind_bases_antes[indices_bases]:
                     distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[k])  #Distancia entre una base y el intermediario
-                    if distancia_base_inter < distancias[i][j] and capacidades[j] <= (comprobar_capacidades[k] - contador):
+                    if distancia_base_inter < distancias[i][j] and capacidades[j] <= (capacidades[k] - contador):
                         # Si esa distancia es menor que la de la base al SD
                         # y la capacidad de la base es menor o igual que la diferencia entre la cap del intermediario y la suma de cap de las bases que contempla...
                         comprobar_capacidades[j] = 0    #No contemplamos la capacidad de esa base -> Va englobada en la capacidad del intermediario

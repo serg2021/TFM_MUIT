@@ -107,11 +107,11 @@ def Comprobacion_Individuo (individuo, capacidades, distancias):
                         individuo[1][j] = indices_bases_inter[j]  # Añadimos en el indice que corresponde con el número del SD los índices recogidos
 
         individuo = individuo.astype(int)
-        A = individuo[1][np.array([i for i, x in enumerate(individuo[1]) if x != 200], dtype=int)]
-        B = individuo[0][A]
-        C = individuo[0][np.array([i for i, x in enumerate(individuo[1]) if x != 200], dtype=int)]
+        A = individuo[1][np.array([i for i, x in enumerate(individuo[1]) if x != 200], dtype=int)]  #Saco índices de bases asociadas a inters
+        B = individuo[0][A]     #Miro el SD al que están asociadas
+        C = individuo[0][np.array([i for i, x in enumerate(individuo[1]) if x != 200], dtype=int)]  #Saco los SD's asociados a los inters
         suma_comprobar[i] = sum(comprobar_capacidades)
-        if not np.array_equal(B,C):  # Si la suma de las capacidades de una solucion para un supply depot es mayor que 200 -> REPARACION
+        if not np.array_equal(B,C):  #Si B y C no son iguales -> Reparación -> Porque no puede haber bases asociadas a un inter que vayan a un SD distinto al del inter
             return True
     Caps_Comprobar = [ind_cap for ind_cap, j in enumerate(suma_comprobar) if j > 200]
     if len(Caps_Comprobar) > 0:
@@ -160,7 +160,7 @@ def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos un
             k_2 = np.argsort(suma_capacidades)[::-1]
             k = k_2[0]  #Solucionamos aquella capacidad que sea mas grande
             while True:
-                k_3 = random.choice(k_2[len(suma_capacidades) - 3:len(suma_capacidades)])
+                k_3 = random.choice(k_2[len(suma_capacidades) - 4:len(suma_capacidades)])   #Jugamos con uno de los 4 SD con menos suma de bases
                 indices_bases_inters_SD = [j for j, value in enumerate(individuo[0]) if value == k]    #Obtenemos índices de las bases cuya suma de caps supera el umbral
                 indices_resto_bases = [j for j, value in enumerate(individuo[0]) if value == k_3]  # Obtenemos índices del resto de bases
                 capacidades_bases_SD_ordenados = list(np.argsort([capacidades[i] for i in indices_bases_inters_SD])[::-1])
@@ -177,7 +177,7 @@ def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos un
                             indice_base_aleatoria_2 = np.random.randint(0, numero_bases)
                         else:
                             break
-                if 200 - suma_capacidades[k_2[9]] < 50:
+                if abs(200 - suma_capacidades[k_2[9]]) < 50 and suma_capacidades[k_2[9]] < 200:
                     individuo[0][indice_base_1], individuo[0][indice_base_aleatoria_2] = individuo[0][indice_base_aleatoria_2], individuo[0][indice_base_1] #Intercambio posiciones de las bases
                 else:
                     e = random.randint(0,5)
@@ -237,22 +237,18 @@ def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos un
                 F = np.array([i for i, x in enumerate(individuo[0]) if x == k], dtype=int)
                 H = np.where(individuo[1][F] == 200)
                 I = np.array(capacidades)
-                J = np.array(capacidades_sd_i)
+                #J = np.array(capacidades_sd_i)
                 if sum(I[F[H]]) > 200: #Si es más de 200, volvemos a hacer mismo código del while
                     continue
-                elif sum(I[F[H]]) == sum(J[F[H]]): #Si no, salimos del while y avanzamos en el for
+                else: #Si no, salimos del while y avanzamos en el for
                     capacidades_sd[k] = capacidades_sd_i
                     suma_capacidades[k] = sum(I[F[H]])
                     break
 
-            #HAY QUE MIRAR DE NUEVO LO DE LAS CAPACIDADES -> LO MEJOR SERÁ VOLVER A ANALIZARLO PASO A PASO CON CROQUIS (AL MENOS SOLO ESTA PARTE)
-            #LA COMPROBACIÓN DE INDIVIDUO PARECE ESTAR BIEN, Y LA ASIGNACIÓN DE INTERMEDIARIOS SEGÚN CAPACIDADES Y QUE TODAS LAS BASES E INTERS VAYAN AL MISMO SD TAMBIÉN
-            #REPITO -> SÓLO QUEDA SOLUCIONAR CAPACIDADES DE LOS SD!!!
-
             #CUANDO SOLUCIONAMOS UNA SUMA, LA GUARDAMOS, Y SOLUCIONAMOS LA SIGUIENTE SIN ASEGURARNOS DE QUE LA ANTERIOR ESTÉ BIEN
             #TENEMOS QUE AÑADIR CÓDIGO PARA VER QUE NO PASE ESO Y QUE TODAS LAS SUMAS ESTÉN BIEN ACTUALIZADAS
 
-            for i in range(numero_supply_depots):
+            for i in range(numero_supply_depots):   #Bucle para comprobar sumas de capacidades alrededor de un SD
                 F = np.array([t for t, x in enumerate(individuo[0]) if x == i], dtype=int)
                 H = np.where(individuo[1][F] == 200)
                 I = np.array(capacidades)
@@ -309,7 +305,7 @@ if __name__ == "__main__":
 
         "stop_cond": "Ngen",   #Condición de parada
         "time_limit": 4000.0,   #Tiempo límite (real, no de CPU) de ejecución
-        "Ngen": 120,  #Número de generaciones
+        "Ngen": 100,  #Número de generaciones
         "Neval": 3e3,   #Número de evaluaciones de la función objetivo
         "fit_target": 50,   #Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 

@@ -132,12 +132,16 @@ class EvolutiveClass:
         valores_sin_repetir = set(individuo)
         valores_validos = valores_posibles - valores_sin_repetir
         for i in range(len(individuo)-1):
-            for j in range(1,len(individuo)):
+            if len(valores_validos) == 0:
+                break
+            for j in range(i+1,len(individuo)):
                 if individuo[i] == individuo[j]:
                     indices = [i, j]
                     indice_reparado = random.choice(indices)    #Elegimos uno de los índices a reparar aleatoriamente
                     individuo[indice_reparado] = random.choice(list(valores_validos))   #Elegimos un valor aleatorio de los posibles
                     valores_validos.remove(individuo[indice_reparado]) #Eliminamos el nuevo valor de los valores válidos
+                if len(valores_validos) == 0:
+                    break
         return individuo
 
     def Reparacion_Aleatorio (self, individuo, capacidades): #Sustituimos una base de un SD por otra (aleatoriamente) -> Hasta cumplir restricción
@@ -282,6 +286,20 @@ def Funcion_Fitness(distancias, poblacion):
         lista_fitness.append(fitness)
     return lista_fitness
 
+def Funcion_Fitness_Viajante(distancias, dist, poblacion, pob, indices):
+    lista_fitness = []
+    SD = pob[indices[0]]
+    for i in range(len(poblacion)):    #Aplicamos la función fitness a cada solución
+        fitness = 0
+        indices_orden = list(np.argsort(poblacion[i]))  #Sacamos el orden de los índices para verlos de forma consecutiva
+        for j in range(len(indices_orden)-1):
+            k = j +1
+            fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
+        fitness += dist[SD][indices[indices_orden[0]]]
+        fitness = fitness/len(poblacion[0])
+        lista_fitness.append(fitness)
+    return lista_fitness
+
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
@@ -346,8 +364,8 @@ if __name__ == "__main__":
     plt.show()
 
     ### AQUÍ COMIENZA EL PROBLEMA DEL VIAJANTE
-    Individuos = 20
-    Generaciones = 5
+    Individuos = 100
+    Generaciones = 500
     Lista_Sol_Final = []
     Costes_Viajante = 0.0
     for i in range(numero_supply_depots):
@@ -363,9 +381,8 @@ if __name__ == "__main__":
             distancia_euclidea_SD = Distancia_Base_Supply_Depot_2D(bases_SD,bases[indices_bases_SD[x]])  # Obtenemos distancias de bases con otra base
             dist_bases_list_SD.append(distancia_euclidea_SD)    #Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
         for j in range(Generaciones):
-            print("Generación: " + str(j))
             Pob_Act = Ev2.Cruce_Viajante(Pob_Init, Num_Orden)
-            Fitness_Viajante = Funcion_Fitness(dist_bases_list_SD, Pob_Act)
+            Fitness_Viajante = Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, Pob_Act, Sol_Final, indices_bases_SD)
             Pob_Init, Costes_Viajante = Ev2.Seleccion(Pob_Act, Fitness_Viajante)
         print("Coste Solución " + str(i) + ": " + str(Costes_Viajante[0]))
         Lista_Sol_Final.append(Pob_Init[0])
@@ -377,10 +394,14 @@ if __name__ == "__main__":
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
     for v in range(len(Lista_Sol_Final)):
         color = colores[v % len(colores)]   #Un color por cada iteración
+        indices_bases_SD = [j for j, value in enumerate(Sol_Final) if value == v]  # Sacamos índices de las bases asociadas a un SD
         indices_ordenados = list(np.argsort(Lista_Sol_Final[v]))    #Ordenamos índices para unir por rectas 2 puntos consecutivos
-        for k in range(0,len(indices_ordenados)-1): #Bucle que recorre los valores
-            plt.plot([longitudes_bases[indices_ordenados[k]], longitudes_bases[indices_ordenados[k+1]]],
-                     [latitudes_bases[indices_ordenados[k]], latitudes_bases[indices_ordenados[k+1]]], color=color)
+        indices_bases_SD_ordenados = [indices_bases_SD[i] for i in indices_ordenados]
+        plt.plot([longitudes_bases[indices_bases_SD_ordenados[0]], longitudes_supply_depots[v]],
+                 [latitudes_bases[indices_bases_SD_ordenados[0]], latitudes_supply_depots[v]], color=color)
+        for k in range(0,len(indices_bases_SD_ordenados)-1): #Bucle que recorre los valores
+            plt.plot([longitudes_bases[indices_bases_SD_ordenados[k]], longitudes_bases[indices_bases_SD_ordenados[k+1]]],
+                     [latitudes_bases[indices_bases_SD_ordenados[k]], latitudes_bases[indices_bases_SD_ordenados[k+1]]], color=color)
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')

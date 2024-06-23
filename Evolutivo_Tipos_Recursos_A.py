@@ -159,12 +159,22 @@ class EvolutiveClass:
                         if lista_filtrada:
                             indice_base_aleatoria_2 = random.choice(lista_filtrada)  # Elección aleatoria de la base del resto de bases
                         else:
-                            indice_base_aleatoria_2 = np.random.randint(0, numero_bases)
-                            while True:
-                                if indice_base_aleatoria_2 == indice_base_1:
-                                    indice_base_aleatoria_2 = np.random.randint(0, numero_bases)
-                                else:
+                            SD_mismos_recursos_2 = [v for i, v in enumerate(SD_mismos_recursos) if v != k and v != k_3]
+                            lista_ind = []
+                            while True:  # Cotejamos que haya bases de la misma clase en otros SD
+                                k_4 = random.choice(SD_mismos_recursos_2)  # Jugamos con uno de los SD con mismos recursos que las bases
+                                indices_resto_bases = [j for j, value in enumerate(individuo) if value == k_4 and value not in lista_ind]
+                                if indices_resto_bases:
                                     break
+                                else:  # Si no hay, la añadimos a una lista
+                                    lista_ind.append(k_4)
+                                    if len(lista_ind) == len(SD_mismos_recursos_2):  # Cuando el tamaño de lista sea igual que SD_mismos_recursos...
+                                        e = random.randint(0, 5)
+                                        f = indices_bases_SD_ordenados[0:e]
+                                        individuo[f] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
+                                    else:
+                                        continue
+                            indice_base_aleatoria_2 = random.choice(indices_resto_bases)
                     else:
                         indice_base_1 = indices_bases_SD_ordenados[0]
                     #indice_base_1 = random.choice(indices_bases_SD_ordenados[0:3])  # Elegimos una de las 5 bases del SD con mayor capacidad
@@ -175,12 +185,23 @@ class EvolutiveClass:
                             if indices_resto_bases:
                                 indice_base_aleatoria_2 = random.choice(indices_resto_bases)
                             else:
-                                SD_mismos_recursos_2 = [i for i, v in enumerate(lista_clases_SD) if np.array_equal(v,lista_clases_SD[
-                                                                                                                     k]) and i != k and i != k_3]  # Sacamos índices de SD con mismos recursos
-                                k_4 = random.choice(SD_mismos_recursos_2)  # Jugamos con uno de los SD con mismos recursos que las bases
-                                indices_resto_bases = [j for j, value in enumerate(individuo) if value == k_4]
+                                SD_mismos_recursos_2 = [v for i, v in enumerate(SD_mismos_recursos) if v != k and v != k_3]
+                                lista_ind = []
+                                while True:  # Cotejamos que haya bases de la misma clase en otros SD
+                                    k_4 = random.choice(SD_mismos_recursos_2)  # Jugamos con uno de los SD con mismos recursos que las bases
+                                    indices_resto_bases = [j for j, value in enumerate(individuo) if value == k_4 and value not in lista_ind]
+                                    if indices_resto_bases:
+                                        break
+                                    else:  # Si no hay, la añadimos a una lista
+                                        lista_ind.append(k_4)
+                                        if len(lista_ind) == len(SD_mismos_recursos_2):  # Cuando el tamaño de lista sea igual que SD_mismos_recursos...
+                                            e = random.randint(0, 5)
+                                            f = indices_bases_SD_ordenados[0:e]
+                                            individuo[f] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
+                                        else:
+                                            continue
                                 indice_base_aleatoria_2 = random.choice(indices_resto_bases)
-                    if abs(200 - suma_capacidades[k_3]) < 50 and suma_capacidades[k_3] < 200:
+                    if abs(200 - suma_capacidades[k_3]) < 20 and suma_capacidades[k_3] < 200:
                         individuo[indice_base_1], individuo[indice_base_aleatoria_2] = individuo[indice_base_aleatoria_2], individuo[indice_base_1]  # Intercambio posiciones de las bases
                     else:
                         e = random.randint(0, 5)

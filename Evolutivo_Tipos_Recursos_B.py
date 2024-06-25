@@ -39,6 +39,14 @@ class EvolutiveClass:
         if Num_Max == None:
             Num_Max = self.Num_Max
         Pob_Ini = list(np.random.randint(0,Num_Max, size=(Fil,Col)))  #Son los índices de los SD asignados a cada base
+        indices_pob_ini = random.sample(list(np.arange(Col)), np.random.randint(0,Col)) #Al azar, elegimos un número de índices que tendrán sublsitas de SD
+        for j in indices_pob_ini:
+            Pob_Ini[j] = []
+            while True:
+                if random.choice([True,False]):  # Generamos aleatoriamente
+                    Pob_Ini[j].append(np.random.randint(0,Num_Max))
+                if len(Pob_Ini[j]) != 0:  # Si me saca una lista vacía, le obligo a intentarlo de nuevo
+                    break
         for i in range(Fil):    #Comprobamos todos los individuos y los reparamos si estuvieran mal
             if(self.Comprobacion_Individuo(Pob_Ini[i], Capacidades)):
                 Pob_Ini[i] = self.Reparacion_Mayor_Menor(Pob_Ini[i], Capacidades)
@@ -88,37 +96,25 @@ class EvolutiveClass:
         suma_comprobar_clase = list(np.zeros(numero_clases, dtype=int))
         for i in range(numero_supply_depots):   #Ponemos la suma de capacidades para cada SD dividida en la suma de capacidades más pequeñas referentes a clases
             suma_comprobar[i] = suma_comprobar_clase
-        if any(isinstance(x, list) for x in individuo):    #Esto será para las soluciones de después de los cruces
-            for i in range(self.Num_Max):   #Bucle para cada SD
-                indices_bases = []
-                for j, value in enumerate(individuo):
-                    if isinstance(value, list):
-                        # Si el elemento es una sublista, verificamos si tiene el SD
-                        if i in value:
-                            indices_bases.append(j)
-                    else:
-                        # Si el elemento no es una sublista, verificamos si tiene el SD
-                        if value == i:
-                            indices_bases.append(j)
-                for j in range(len(indices_bases)): #Bucle para base asociada a ese SD
-                    ind_clases = [k for k,v in enumerate(lista_clases_base[indices_bases[j]]) if v != 0]    #Sacamos qué clases tiene esa base
-                    for k in ind_clases:    #Bucle para cada clase de esa base
-                        comprobar_capacidades = capacidades[indices_bases[j]][k]
-                        suma_comprobar[i][k] += comprobar_capacidades
-                Caps_Clase_Comprobar = [t for t, value in enumerate(suma_comprobar[i]) if value > 200/numero_clases]
-                if len(Caps_Clase_Comprobar) > 0:   #Si para un SD, se supera el umbral de al menos una clase... -> Reparación
-                    return True
-        elif any(isinstance(x, int) for x in individuo):   #Esto será para soluciones de la población inicial
-            for i in range(self.Num_Max):   #Bucle para cada SD
-                indices_bases = [j for j, value in enumerate(individuo) if value == i]  #Obtenemos los indices de las bases asociadas a un SD "i"
-                for j in range(len(indices_bases)): #Bucle para base asociada a ese SD
-                    ind_clases = [k for k,v in enumerate(lista_clases_base[indices_bases[j]]) if v != 0]    #Sacamos qué clases tiene esa base
-                    for k in ind_clases:    #Bucle para cada clase de esa base
-                        comprobar_capacidades = capacidades[indices_bases[j]][k]
-                        suma_comprobar[i][k] += comprobar_capacidades
-                Caps_Clase_Comprobar = [t for t, value in enumerate(suma_comprobar[i]) if value > 200/numero_clases]
-                if len(Caps_Clase_Comprobar) > 0:   #Si para un SD, se supera el umbral de al menos una clase... -> Reparación
-                    return True
+        for i in range(self.Num_Max):   #Bucle para cada SD
+            indices_bases = []
+            for j, value in enumerate(individuo):
+                if isinstance(value, list):
+                    # Si el elemento es una sublista, verificamos si tiene el SD
+                    if i in value:
+                        indices_bases.append(j)
+                else:
+                    # Si el elemento no es una sublista, verificamos si tiene el SD
+                    if value == i:
+                        indices_bases.append(j)
+            for j in range(len(indices_bases)): #Bucle para base asociada a ese SD
+                ind_clases = [k for k,v in enumerate(lista_clases_base[indices_bases[j]]) if v != 0]    #Sacamos qué clases tiene esa base
+                for k in ind_clases:    #Bucle para cada clase de esa base
+                    comprobar_capacidades = capacidades[indices_bases[j]][k]
+                    suma_comprobar[i][k] += comprobar_capacidades
+            Caps_Clase_Comprobar = [t for t, value in enumerate(suma_comprobar[i]) if value > 200/numero_clases]
+            if len(Caps_Clase_Comprobar) > 0:   #Si para un SD, se supera el umbral de al menos una clase... -> Reparación
+                return True
         Caps_Comprobar = [ind_cap for ind_cap, j in enumerate(suma_comprobar) if sum(j) > 200]
         if len(Caps_Comprobar) > 0: #Si la suma de las capacidades pequeñas excede el límite de 200... -> Reparación
             return True
@@ -153,107 +149,144 @@ class EvolutiveClass:
     def Reparacion_Mayor_Menor (self, individuo, capacidades): #Sustituimos una base de un SD por otra (aleatoriamente) -> Hasta cumplir restricción
         capacidades_sd = list(np.zeros(self.Num_Max))   #Capacidades de los SD
         suma_capacidades = list(np.zeros(self.Num_Max)) #Suma de las capacidades de las bases
-        for i in range(self.Num_Max):
-            indices_bases_reparar = [j for j, value in enumerate(individuo) if value == i]
-            for j in range(len(indices_bases_reparar)):
-                if np.array_equal(lista_clases_base[indices_bases_reparar[j]], lista_clases_SD[i]):   #Comprobamos si tienen los mismos recursos la base asignada y el SD
-                    capacidades_sd_i = capacidades[indices_bases_reparar[j]]
-                    capacidades_sd[i] = capacidades_sd_i
-                    suma_capacidades[i] += capacidades_sd[i]    #Almacenamos todas las sumas de las capacidades en un array
-                else:   #Si no, buscamos una base que sí los tenga
-                    #indices_bases_misma_clase = [k for k,v in enumerate(lista_clases_base) if np.array_equal(v,lista_clases_SD[i])]
-                    #Sacamos todas las bases que tengan los mismos recursos que el SD
-                    #indice_bases_misma_clase = random.choice(indices_bases_misma_clase) #Elegimos aleatoriamente una de las posibles bases
-                    #capacidades_sd_i = capacidades[indice_bases_misma_clase]
-                    #capacidades_sd[i] = capacidades_sd_i
-                    #suma_capacidades[i] += capacidades_sd[i]  # Almacenamos todas las sumas de las capacidades en un array
-                    #individuo[indice_bases_misma_clase] = i  # Cambiamos la asignación de esa base al SD al que debería estar asociada
-                    individuo[indices_bases_reparar[j]] = random.choice([k for k, v in enumerate(lista_clases_SD) if np.array_equal(v,lista_clases_base[indices_bases_reparar[j]])])
-                    # Asociamos a la base que queremos reparar un SD que coincida con sus recursos
-        Caps_SD_Superadas = [ind_cap for ind_cap, j in enumerate(suma_capacidades) if j > 200]  # Comprobamos en qué SD's se han superado la capacidad
-
-        if len(Caps_SD_Superadas) > 0:
+        suma_capacidades_clase = list(np.zeros(numero_clases, dtype=int))
+        for i in range(numero_supply_depots):  # Ponemos la suma de capacidades para cada SD dividida en la suma de capacidades más pequeñas referentes a clases
+            suma_capacidades[i] = suma_capacidades_clase
+            capacidades_sd[i] = suma_capacidades_clase
+        if any(isinstance(x, list) for x in individuo):
+            SD_ind = 0
             while True:
-                k_2 = np.argsort(suma_capacidades)[::-1]
-                k = k_2[0]  # Solucionamos aquella capacidad que sea mas grande
-                while True:
-                    SD_mismos_recursos = [i for i, v in enumerate(lista_clases_SD) if np.array_equal(v,lista_clases_SD[k]) and i != k] #Sacamos índices de SD con mismos recursos
-                    k_3 = random.choice(SD_mismos_recursos)  # Jugamos con uno de los SD con mismos recursos que las bases
-                    indices_bases_SD = [j for j, value in enumerate(individuo) if value == k]    #Obtenemos índices de las bases cuya suma de caps supera el umbral
-                    indices_resto_bases = [j for j, value in enumerate(individuo) if value == k_3]  # Obtenemos índices de bases para otro SD con mismos recursos
-                    capacidades_bases_SD_ordenados = list(np.argsort([capacidades[i] for i in indices_bases_SD])[::-1])
-                    indices_bases_SD_ordenados = [indices_bases_SD[i] for i in capacidades_bases_SD_ordenados]
-
-                    if (suma_capacidades[k] > 200 and suma_capacidades[k] < 220) or (suma_capacidades[k] < 200 and suma_capacidades[k] > 180):
-                        indice_base_1 = indices_bases_SD_ordenados[len(indices_bases_SD_ordenados)-np.random.randint(1,len(indices_bases_SD_ordenados))] #Cuando se estabilice la suma de capacidades cogemos caps pequeñas
-                        lista_filtrada = [value for value in indices_resto_bases if capacidades[value] <= capacidades[indice_base_1]]
-                        if lista_filtrada:
-                            indice_base_aleatoria_2 = random.choice(lista_filtrada)  # Elección aleatoria de la base del resto de bases
-                        else:
-                            SD_mismos_recursos_2 = [v for i, v in enumerate(SD_mismos_recursos) if v != k and v != k_3]
-                            lista_ind = []
-                            while True:  # Cotejamos que haya bases de la misma clase en otros SD
-                                k_4 = random.choice(SD_mismos_recursos_2)  # Jugamos con uno de los SD con mismos recursos que las bases
-                                indices_resto_bases = [j for j, value in enumerate(individuo) if value == k_4 and value not in lista_ind]
-                                if indices_resto_bases:
-                                    break
-                                else:  # Si no hay, la añadimos a una lista
-                                    lista_ind.append(k_4)
-                                    if len(lista_ind) == len(SD_mismos_recursos_2):  # Cuando el tamaño de lista sea igual que SD_mismos_recursos...
-                                        e = random.randint(0, 5)
-                                        f = indices_bases_SD_ordenados[0:e]
-                                        individuo[f] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
-                                    else:
-                                        continue
-                            indice_base_aleatoria_2 = random.choice(indices_resto_bases)
+                indices_bases_reparar = []
+                for j, value in enumerate(individuo):   #Sacamos bases asociadas a un SD
+                    if isinstance(value, list):
+                        # Si el elemento es una sublista, verificamos si tiene el SD
+                        if SD_ind in value:
+                            indices_bases_reparar.append(j)
                     else:
-                        indice_base_1 = indices_bases_SD_ordenados[0]
-                    #indice_base_1 = random.choice(indices_bases_SD_ordenados[0:3])  # Elegimos una de las 5 bases del SD con mayor capacidad
-                        lista_filtrada = [value for value in indices_resto_bases if capacidades[value] < capacidades[indice_base_1]]
-                        if lista_filtrada:
-                            indice_base_aleatoria_2 = random.choice(lista_filtrada)  # Elección aleatoria de la base del resto de bases
-                        else:
-                            if indices_resto_bases:
-                                indice_base_aleatoria_2 = random.choice(indices_resto_bases)
+                        # Si el elemento no es una sublista, verificamos si tiene el SD
+                        if value == SD_ind:
+                            indices_bases_reparar.append(j)
+                for j in range(len(indices_bases_reparar)):
+                    ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_reparar[j]]) if v != 0]  # Sacamos qué clases tiene esa base
+                    for k in ind_clases:  # Bucle para cada clase de esa base
+                        capacidades_sd_i = capacidades[indices_bases_reparar[j]][k]
+                        capacidades_sd[SD_ind][k] = capacidades_sd_i
+                        suma_capacidades[SD_ind][k] += capacidades_sd[SD_ind][k]    #Almacenamos todas las sumas de las capacidades en un array
+                Caps_Clase_Comprobar = [t for t, value in enumerate(suma_capacidades[SD_ind]) if value > 200 / numero_clases]
+                if len(Caps_Clase_Comprobar) > 0:  # Si para un SD, se supera el umbral de al menos una clase... -> Reparación
+                    while True:
+                        k_2 = np.argsort(suma_capacidades[SD_ind])[::-1]
+                        k = k_2[0]  # Solucionamos aquella capacidad que sea mas grande de las clases
+                        while True: #Bucle infinito hasta que no dé errores
+                            SDs = list(np.arange(numero_supply_depots))  #Sacamos lista de SDs
+                            k_3 = random.choice(SDs)    #Elegimos uno al azar
+                            indices_bases_SD = []   #Bases asociadas al SD de la Cap más grande
+                            indices_resto_bases = []    #Bases asociadas al otro SD
+                            for j, value in enumerate(individuo):  # Sacamos bases asociadas a un SD
+                                if isinstance(value, list):
+                                    # Si el elemento es una sublista, verificamos si tiene el SD
+                                    if SD_ind in value:
+                                        indices_bases_SD.append(j)
+                                    if k_3 in value:
+                                        indices_resto_bases.append(j)
+                                else:
+                                    # Si el elemento no es una sublista, verificamos si tiene el SD
+                                    if value == SD_ind:
+                                        indices_bases_SD.append(j)
+                                    if value == k_3:
+                                        indices_resto_bases.append(j)
+                            capacidades_bases_SD_ordenados = list(np.argsort([capacidades[i][k] for i in indices_bases_SD])[::-1])
+                            #Ordenamos índices de capacidades de esa clase de mayor a menor
+                            indices_bases_SD_ordenados = [indices_bases_SD[i] for i in capacidades_bases_SD_ordenados]
+                            #Ordenamos los índices de las bases al SD de la Cap más grande de mayor a menor
+
+                            indice_base_1 = indices_bases_SD_ordenados[0]   #Cogemos la base con mayor cap de esa clase
+                            lista_filtrada = [value for value in indices_resto_bases if capacidades[value] <= capacidades[indice_base_1]]
+                            if lista_filtrada:
+                                indice_base_aleatoria_2 = random.choice(lista_filtrada)  # Elección aleatoria de la base del resto de bases
                             else:
-                                SD_mismos_recursos_2 = [v for i, v in enumerate(SD_mismos_recursos) if v != k and v != k_3]
+                                SD_mismos_recursos = [v for i, v in enumerate(SDs) if v != k_3[0] and v != k_3[1]]    #Sacamos lista del resto de SDs
                                 lista_ind = []
                                 while True:  # Cotejamos que haya bases de la misma clase en otros SD
-                                    k_4 = random.choice(SD_mismos_recursos_2)  # Jugamos con uno de los SD con mismos recursos que las bases
-                                    indices_resto_bases = [j for j, value in enumerate(individuo) if value == k_4 and value not in lista_ind]
+                                    k_4 = random.choice(SD_mismos_recursos)  # Jugamos con uno de los SD con mismos recursos que las bases
+                                    indices_resto_bases = []  # Bases asociadas al otro SD
+                                    for j, value in enumerate(individuo):  # Sacamos bases asociadas a un SD
+                                        if isinstance(value, list):
+                                            # Si el elemento es una sublista, verificamos si tiene el SD
+                                            if k_4 in value and k_4 not in lista_ind:
+                                                indices_resto_bases.append(j)
+                                        else:
+                                            # Si el elemento no es una sublista, verificamos si tiene el SD
+                                            if value == k_4 and value not in lista_ind:
+                                                indices_resto_bases.append(j)
                                     if indices_resto_bases:
                                         break
                                     else:  # Si no hay, la añadimos a una lista
                                         lista_ind.append(k_4)
-                                        if len(lista_ind) == len(SD_mismos_recursos_2):  # Cuando el tamaño de lista sea igual que SD_mismos_recursos...
+                                        if len(lista_ind) == len(SDs):  # Cuando el tamaño de lista sea igual que SD_mismos_recursos...
                                             e = random.randint(0, 5)
                                             f = indices_bases_SD_ordenados[0:e]
-                                            individuo[f] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
+                                            for i in f:
+                                                if isinstance(individuo[i], list):  #Si es una sublista, buscamos índice donde esté el valor de ese SD
+                                                    indice = [j for j,v in enumerate(individuo[i]) if v == SD_ind]
+                                                    individuo[i][indice] = k_3  #Lo cambiamos por el otro SD
+                                                else:
+                                                    individuo[i] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
                                         else:
                                             continue
                                 indice_base_aleatoria_2 = random.choice(indices_resto_bases)
-                    if abs(200 - suma_capacidades[k_3]) < 20 and suma_capacidades[k_3] < 200:
-                        individuo[indice_base_1], individuo[indice_base_aleatoria_2] = individuo[indice_base_aleatoria_2], individuo[indice_base_1]  # Intercambio posiciones de las bases
-                    else:
-                        e = random.randint(0, 5)
-                        f = indices_bases_SD_ordenados[0:e]
-                        individuo[f] = k_3
-                    F = np.array([t for t, x in enumerate(individuo) if x == k], dtype=int)
-                    I = np.array(capacidades)
-                    suma_capacidades[k] = sum(I[F])
-                    if suma_capacidades[k] > 200:
-                        continue
+                            if isinstance(individuo[indice_base_1], int) and isinstance(individuo[indice_base_aleatoria_2], int):
+                                individuo[indice_base_1], individuo[indice_base_aleatoria_2] = individuo[indice_base_aleatoria_2], individuo[indice_base_1]  # Intercambio posiciones de las bases
+                            elif isinstance(individuo[indice_base_1], list) and isinstance(individuo[indice_base_aleatoria_2], list):
+                                individuo[indice_base_1][SD_ind], individuo[indice_base_aleatoria_2][k_3] = individuo[indice_base_aleatoria_2][k_3], individuo[indice_base_1][SD_ind]
+                            elif isinstance(individuo[indice_base_1], list) or isinstance(individuo[indice_base_aleatoria_2], list):
+                                if isinstance(individuo[indice_base_1], list):
+                                    individuo[indice_base_1][SD_ind], individuo[indice_base_aleatoria_2] = individuo[indice_base_aleatoria_2],individuo[indice_base_1][SD_ind]  # Intercambio posiciones de las bases
+                                elif isinstance(individuo[indice_base_aleatoria_2], list):
+                                    individuo[indice_base_1], individuo[indice_base_aleatoria_2][k_3] = individuo[indice_base_aleatoria_2][k_3],individuo[indice_base_1] # Intercambio posiciones de las bases
+
+                            indices_bases_SD = []  # Bases asociadas al SD de la Cap más grande
+                            for j, value in enumerate(individuo):  # Sacamos bases asociadas a un SD
+                                if isinstance(value, list):
+                                    # Si el elemento es una sublista, verificamos si tiene el SD
+                                    if SD_ind in value:
+                                        indices_bases_SD.append(j)
+                                else:
+                                    # Si el elemento no es una sublista, verificamos si tiene el SD
+                                    if value == SD_ind:
+                                        indices_bases_SD.append(j)
+                            for j in range(len(indices_bases_SD)):
+                                ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_SD[j]]) if v != 0]  # Sacamos qué clases tiene esa base
+                                for s in range(numero_clases):  #Inicializamos a 0 todas las sumas de capacidades para la comprobación
+                                    suma_capacidades[SD_ind][s] = 0
+                                for t in ind_clases:  # Bucle para cada clase de esa base
+                                    capacidades_sd_i = capacidades[indices_bases_SD[j]][t]
+                                    capacidades_sd[SD_ind][t] = capacidades_sd_i
+                                    suma_capacidades[SD_ind][t] += capacidades_sd[SD_ind][t]  # Almacenamos todas las sumas de las capacidades en un array
+                            Caps_Clase_SD = [t for t, value in enumerate(suma_capacidades[SD_ind]) if value > 200 / numero_clases]
+                            if len(Caps_Clase_SD) == 0:
+                                break
+                            else:
+                                continue
+                        Caps_Clase_Comprobar = [t for t, value in enumerate(suma_capacidades[SD_ind]) if value > 200 / numero_clases]
+                        if len(Caps_Clase_Comprobar) == 0:
+                            break
+                    Caps_SD_Superadas = [ind_cap for ind_cap, j in enumerate(suma_capacidades) if sum(j) > 200]  # Comprobamos en qué SD's se han superado la capacidad
+                    if len(Caps_SD_Superadas) > 0:  #Al finalizar con un SD -> Pasamos al siguiente
+                        SD_ind += 1
+                        if SD_ind == numero_supply_depots:
+                            SD_ind = 0
                     else:
                         break
-
-                for i in range(numero_supply_depots):   #Bucle para comprobar sumas de capacidades alrededor de un SD
-                    F = np.array([t for t, x in enumerate(individuo) if x == i], dtype=int)
-                    I = np.array(capacidades)
-                    suma_capacidades[i] = sum(I[F])
-                Caps_SD_Superadas = [ind_cap for ind_cap, j in enumerate(suma_capacidades) if j > 200]  # Comprobamos en qué SD's se han superado la capacidad
-                if len(Caps_SD_Superadas) == 0:
-                    break
-        return individuo
+                else:
+                    SD_ind += 1
+                    if SD_ind == numero_supply_depots:
+                        Caps_SD_Superadas = [ind_cap for ind_cap, j in enumerate(suma_capacidades) if sum(j) > 200]  # Comprobamos en qué SD's se han superado la capacidad
+                        if len(Caps_SD_Superadas) > 0:
+                            SD_ind = 0
+                        else:
+                            break
+            return individuo
 
 def Puntos_Sin_Repetir(num_points, offset=0.5):
     points = set()  # Usamos un conjunto para evitar duplicados
@@ -306,7 +339,7 @@ if __name__ == "__main__":
     Pob_Actual = []
     Costes = []
     numero_bases = 200
-    numero_supply_depots = 15
+    numero_supply_depots = 30
     capacidad_maxima = 20
     numero_clases = 5
     puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))

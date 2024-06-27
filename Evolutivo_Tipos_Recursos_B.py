@@ -46,7 +46,7 @@ class EvolutiveClass:
                 Sol_Ini[j] = []
                 while True:
                     if random.choice([True,False]):  # Generamos aleatoriamente
-                        Sol_Ini[j].extend([random.randint(0,Num_Max) for _ in range(random.randint(0,numero_clases))])
+                        Sol_Ini[j].extend(random.sample(range(Num_Max+1), random.randint(2,numero_clases)))
                     if len(Sol_Ini[j]) != 0:  # Si me saca una lista vacía, le obligo a intentarlo de nuevo
                         break
             Pob_Ini.append(Sol_Ini)
@@ -56,10 +56,10 @@ class EvolutiveClass:
         return Pob_Ini
 
     def Seleccion(self, poblacion_inicial, coste):
-        index = np.argsort(coste)
+        index = list(np.argsort(coste))
         coste_ordenado = np.sort(coste)
-        poblacion_actual = poblacion_inicial[index,:]   #La población tendrá más soluciones que la inicial debido al cruce
-        poblacion_actual = poblacion_actual[0:self.Num_Individuos,:]    #Nos quedamos con los mejores individuos
+        poblacion_actual = [poblacion_inicial[v] for i,v in enumerate(index)]   #La población tendrá más soluciones que la inicial debido al cruce
+        poblacion_actual = poblacion_actual[0:self.Num_Individuos]    #Nos quedamos con los mejores individuos
         return poblacion_actual, coste_ordenado
 
     def Cruce (self, poblacion, capacidades, Num_Max = None):
@@ -72,16 +72,18 @@ class EvolutiveClass:
             Indice_Padres = random.sample(Indices_Validos, 2)
             #Indice_Padres = random.sample([j for j in Indices_Validos if j not in Indice_Seleccionado], 2)            # Se elige aleatoriamente el indice de los padres
             #Indice_Seleccionado.extend(Indice_Padres)   #Guardamos los índices elegidos para que no los vuelva a repetir en la siguiente iteración
-            Padre1 = poblacion[Indice_Padres[0],:]                              # Se coge el padre 1
-            Padre2 = poblacion[Indice_Padres[1],:]                              # Se coge el padre 2
-            Hijo = list(np.copy(Padre1))                                              # El hijo va a ser una copia del padre 1
+            Padre1 = poblacion[Indice_Padres[0]]                              # Se coge el padre 1
+            Padre2 = poblacion[Indice_Padres[1]]                              # Se coge el padre 2
+            Hijo = Padre1                                             # El hijo va a ser una copia del padre 1
             vector = 1*(np.random.rand(self.Tam_Individuos) > self.Prob_Cruce)  # Se genera un vector para seleccionar los genes del padre 2
-            Hijo[np.where(vector==1)[0]] = Padre2[np.where(vector==1)[0]]       # Los genes seleccionados del padre 2 pasan al hijo
+            for j in enumerate(np.where(vector==1)[0]):
+                Hijo[j[1]] = Padre2[j[1]]       # Los genes seleccionados del padre 2 pasan al hijo
             if np.random.rand() < self.Prob_Mutacion:                           # Se comprueba si el hijo va a mutar
                 Hijo = self.Mutacion(Hijo, Num_Max)
             if(self.Comprobacion_Individuo(Hijo, capacidades)):                    # Se comprueba si hay que reparar el hijo
                  Hijo = self.Reparacion_Mayor_Menor(Hijo, capacidades)
-            poblacion = np.insert(poblacion,self.Num_Padres+i,Hijo, axis = 0)   # Se añade a la población una vez que ha mutado y se ha reparado
+            #poblacion = np.insert(poblacion,self.Num_Padres+i,Hijo, axis = 0)   # Se añade a la población una vez que ha mutado y se ha reparado
+            poblacion.append(Hijo)  #Añadimos otro elemento a la población
         return poblacion
 
     def Mutacion (self, individuo, Num_Max=None):
@@ -331,7 +333,7 @@ if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
     Num_Generaciones = 500
-    Tam_Individuos = 200
+    Tam_Individuos = 100
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5

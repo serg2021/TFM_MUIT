@@ -131,13 +131,6 @@ class EvolutiveClass:
                         indices_bases.append(j)
             for j in range(len(indices_bases)): #Bucle para base asociada a ese SD
                 ind_clases = [k for k,v in enumerate(lista_clases_base[indices_bases[j]]) if v != 0]    #Sacamos qué clases tiene esa base
-                valor_clases = [v for k, v in enumerate(asig[indices_bases[j]]) if v != numero_supply_depots]  # Sacamos qué clases tiene esa base
-                if isinstance(individuo[indices_bases[j]], list):
-                    valor_clases_indi = [v for k, v in enumerate(individuo[indices_bases[j]])]  # Sacamos qué clases tiene esa base
-                    set_valor_clases = set(valor_clases)
-                    set_valor_clases_indi = set(valor_clases_indi)
-                    if set_valor_clases != set_valor_clases_indi:   #Lo que hacemos es comprobar que la asignación de clases a SD y de bases a SD sea la misma
-                        return True
                 for k in ind_clases:    #Bucle para cada clase de esa base
                     if asig[indices_bases[j]][k] == i:    #Comprobamos que para esa clase esté asignado el SD correspondiente
                         comprobar_capacidades = capacidades[indices_bases[j]][k]
@@ -180,8 +173,6 @@ class EvolutiveClass:
         capacidades_sd = [[0 for _ in range(numero_clases)] for _ in range(self.Num_Max)]
         suma_capacidades = [[0 for _ in range(numero_clases)] for _ in range(self.Num_Max)]
         SD_ind = 0
-        flag = 0
-        #indice_cambio = 0
         while True:
             indices_bases_reparar = []
             for j, value in enumerate(individuo):   #Sacamos bases asociadas a un SD
@@ -197,27 +188,13 @@ class EvolutiveClass:
                 suma_capacidades[SD_ind][s] = 0
             for j in range(len(indices_bases_reparar)):
                 ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_reparar[j]]) if v != 0]  # Sacamos qué clases tiene esa base
-                valor_clases = [v for k, v in enumerate(asig[indices_bases_reparar[j]]) if v != numero_supply_depots]  # Sacamos qué clases tiene esa base
-                if isinstance(individuo[indices_bases_reparar[j]], list):
-                    valor_clases_indi = [v for k, v in enumerate(individuo[indices_bases_reparar[j]])]  # Sacamos qué clases tiene esa base
-                    set_valor_clases = set(valor_clases)
-                    set_valor_clases_indi = set(valor_clases_indi)
-                    if set_valor_clases != set_valor_clases_indi:  # Lo que hacemos es comprobar que la asignación de clases a SD y de bases a SD sea la misma
-                        #indice_cambio = indices_bases_reparar[j]
-                        flag = 1
-                        break
                 for k in ind_clases:  # Bucle para cada clase de esa base
                     if asig[indices_bases_reparar[j]][k] == SD_ind:  # Comprobamos que para esa clase esté asignado el SD correspondiente
                         capacidades_sd_i = capacidades[indices_bases_reparar[j]][k]
                         capacidades_sd[SD_ind][k] = capacidades_sd_i
                         suma_capacidades[SD_ind][k] += capacidades_sd[SD_ind][k]    #Almacenamos todas las sumas de las capacidades en un array
             Caps_Clase_Comprobar = [t for t, value in enumerate(suma_capacidades[SD_ind]) if value > 200 / numero_clases]
-            if len(Caps_Clase_Comprobar) > 0 or flag == 1:  # Si para un SD, se supera el umbral de al menos una clase... -> Reparación
-                                                            # Si los SD asignados para cada clase no coinciden con los SD asignados en la solución -> Reparación
-                if flag == 1:
-                    #valor_clases = set(valor_clases)
-                    #individuo[indice_cambio] = list(valor_clases)
-                    flag = 0
+            if len(Caps_Clase_Comprobar) > 0:  # Si para un SD, se supera el umbral de al menos una clase... -> Reparación
                 while True: #Bucle para solucionar los SD
                     k_2 = np.argsort(suma_capacidades[SD_ind])[::-1]
                     k_1 = k_2[0]  # Solucionamos aquella capacidad que sea mas grande de las clases
@@ -369,34 +346,6 @@ class EvolutiveClass:
                                                 asig[indice_base_aleatoria_2][k_1] = SD_aux # Actualizamos la asignación de esa clase al nuevo SD
                                                 individuo[indice_base_aleatoria_2] = SD_aux
 
-                            valor_asig_1 = [v for k, v in enumerate(asig[indice_base_1]) if v != numero_supply_depots]
-                            valor_asig_2 = [v for k, v in enumerate(asig[indice_base_aleatoria_2]) if v != numero_supply_depots]
-                            if isinstance(individuo[indice_base_1], (int, np.integer)) and isinstance(individuo[indice_base_aleatoria_2], (int, np.integer)):
-                                set_ind = [individuo[indice_base_1]]
-                                set_ind_2 = [individuo[indice_base_aleatoria_2]]
-                                if set(valor_asig_1) != set(set_ind) or set(valor_asig_2) != set(set_ind_2):
-                                    break
-                            elif isinstance(individuo[indice_base_1], (int, np.integer)) or isinstance(individuo[indice_base_aleatoria_2], (int, np.integer)):
-                                if isinstance(individuo[indice_base_1], (int, np.integer)):
-                                    set_ind = [individuo[indice_base_1]]
-                                    if set(valor_asig_1) != set(set_ind) or set(valor_asig_2) != set(individuo[indice_base_aleatoria_2]):
-                                        break
-                                if isinstance(individuo[indice_base_aleatoria_2], (int, np.integer)):
-                                    set_ind_2 = [individuo[indice_base_aleatoria_2]]
-                                    if set(valor_asig_1) != set(individuo[indice_base_1]) or set(valor_asig_2) != set(set_ind_2):
-                                        break
-                                elif isinstance(individuo[indice_base_1], list) and isinstance(individuo[indice_base_aleatoria_2], list):
-                                    if set(valor_asig_1) != set(individuo[indice_base_1]) or set(valor_asig_2) != set(individuo[indice_base_aleatoria_2]):
-                                        break
-                                elif isinstance(individuo[indice_base_1], list) or isinstance(individuo[indice_base_aleatoria_2], list):
-                                    if isinstance(individuo[indice_base_1], list):
-                                        set_ind_2 = [individuo[indice_base_aleatoria_2]]
-                                        if set(valor_asig_1) != set(individuo[indice_base_1]) or set(valor_asig_2) != set(set_ind_2):
-                                            break
-                                    if isinstance(individuo[indice_base_aleatoria_2], list):
-                                        set_ind = [individuo[indice_base_1]]
-                                        if set(valor_asig_1) != set(set_ind) or set(valor_asig_2) != set(individuo[indice_base_aleatoria_2]):
-                                            break
                                 #Para hacer un intercambio equivalente, tenemos que comprobar que las 2 bases compartan la misma clase k
 
                                 #FALTA HACER LA PRUEBA -> SI NOS DA PROBLEMAS, TENEMOS QUE COMPROBAR A LA HORA DE ELEGIR LA BASE ALEATORIA A INTERCAMBIAR
@@ -423,10 +372,6 @@ class EvolutiveClass:
                                     individuo[indice_base_aleatoria_2].pop(ind_cambio)  # Le quitamos ese SD
                                 individuo[indice_base_aleatoria_2].append(SD_ind)  # Le añadimos el nuevo SD SIEMPRE
 
-                            valor_asig_1 = [v for k, v in enumerate(asig[indice_base_1]) if v != numero_supply_depots]
-                            valor_asig_2 = [v for k, v in enumerate(asig[indice_base_aleatoria_2]) if v != numero_supply_depots]
-                            if set(valor_asig_1) != set(individuo[indice_base_1]) or set(valor_asig_2) != set(individuo[indice_base_aleatoria_2]):
-                                break
                         elif isinstance(individuo[indice_base_1], list) or isinstance(individuo[indice_base_aleatoria_2], list):
                             if isinstance(individuo[indice_base_1], list):
                                 if asig[indice_base_1][k_1] != numero_supply_depots:
@@ -462,23 +407,6 @@ class EvolutiveClass:
                                     elif len(comprob_asig_2) > 1:
                                         individuo[indice_base_1] = [individuo[indice_base_1]]
                                         individuo[indice_base_1].append(k_3)
-
-                            valor_asig_1 = [v for k, v in enumerate(asig[indice_base_1]) if v != numero_supply_depots]
-                            valor_asig_2 = [v for k, v in enumerate(asig[indice_base_aleatoria_2]) if v != numero_supply_depots]
-                            if isinstance(individuo[indice_base_1], (int, np.integer)) and isinstance(individuo[indice_base_aleatoria_2], (int, np.integer)):
-                                set_ind = [individuo[indice_base_1]]
-                                set_ind_2 = [individuo[indice_base_aleatoria_2]]
-                                if set(valor_asig_1) != set(set_ind) or set(valor_asig_2) != set(set_ind_2):
-                                    break
-                            elif isinstance(individuo[indice_base_1], (int, np.integer)) or isinstance(individuo[indice_base_aleatoria_2], (int, np.integer)):
-                                if isinstance(individuo[indice_base_1], (int, np.integer)):
-                                    set_ind = [individuo[indice_base_1]]
-                                    if set(valor_asig_1) != set(set_ind) or set(valor_asig_2) != set(individuo[indice_base_aleatoria_2]):
-                                        break
-                                if isinstance(individuo[indice_base_aleatoria_2], (int, np.integer)):
-                                    set_ind_2 = [individuo[indice_base_aleatoria_2]]
-                                    if set(valor_asig_1) != set(individuo[indice_base_1]) or set(valor_asig_2) != set(set_ind_2):
-                                        break
 
                         indices_bases_SD = []  # Bases asociadas al SD de la Cap más grande
                         for j, value in enumerate(individuo):  # Sacamos bases asociadas a un SD

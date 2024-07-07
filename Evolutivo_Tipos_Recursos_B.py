@@ -263,7 +263,7 @@ class EvolutiveClass:
                                         break
                                     else:  # Si no hay, la añadimos a una lista
                                         lista_ind.append(k_4)
-                                        if len(lista_ind) == len(SDs):  # Cuando el tamaño de lista sea igual que SD_mismos_recursos...
+                                        if len(lista_ind) == len(SD_mismos_recursos):  # Cuando el tamaño de lista sea igual que SD_mismos_recursos...
                                             e = random.randint(0, 5)
                                             f = indices_bases_SD_ordenados[0:e]
                                             for i in f:
@@ -275,7 +275,7 @@ class EvolutiveClass:
                                                     individuo[i] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
                                                     indice_asig = [j for j, v in enumerate(asig[i]) if v != numero_supply_depots]
                                                     if len(indice_asig) == 1:
-                                                        asig[i][indice_asig] = k_3
+                                                        asig[i][indice_asig[0]] = k_3
                                                     elif len(indice_asig) > 1:
                                                         g = random.choice(indice_asig)
                                                         asig[i][g] = k_3

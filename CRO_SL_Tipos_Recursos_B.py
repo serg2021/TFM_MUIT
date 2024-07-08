@@ -490,7 +490,7 @@ if __name__ == "__main__":
     Pob_Actual = []
     Costes = []
     poblacion_inicial = 100
-    Num_Gen = 10
+    Num_Gen = 20
     numero_bases = 200
     numero_supply_depots = 30
     capacidad_maxima = 20

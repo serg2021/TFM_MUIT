@@ -6,12 +6,13 @@
 2º -> Podemos ejecutar el código sin problemas
 """
 import rasterio
+from rasterio.transform import rowcol, from_origin
+from pyproj import CRS, Transformer
 import numpy as np
 import random
 import math
 import matplotlib.pyplot as plt
 from geopy.distance import geodesic
-from scipy.interpolate import interp1d
 
 class EvolutiveClass:
     def __init__(self, Num_Individuos=200, Num_Generaciones=10, Tam_Individuos=1, Num_Max = 10, Prob_Padres=0.5, Prob_Mutacion=0.02, Prob_Cruce=0.5):
@@ -186,14 +187,16 @@ class EvolutiveClass:
         return individuo
 
 def Puntos_Sin_Repetir(num_points, offset=0.5):
+    with rasterio.open(mapa_dem) as dem:
+        limites = dem.bounds
     points = set()  # Usamos un conjunto para evitar duplicados
     while len(points) < num_points:
-        latitud = np.random.uniform(low=0, high=180.0)
-        longitud = np.random.uniform(low=0, high=180.0)
+        latitud = np.random.uniform(low=limites.bottom, high=limites.top)
+        longitud = np.random.uniform(low=limites.left, high=limites.right)
         # Aplicar desplazamiento aleatorio para evitar superposiciones
         latitud_offset = np.random.uniform(low=-offset, high=offset)
         longitud_offset = np.random.uniform(low=-offset, high=offset)
-        point_with_offset = (latitud + latitud_offset, longitud + longitud_offset)
+        point_with_offset = (longitud + longitud_offset, latitud + latitud_offset)
         points.add(point_with_offset)  # Agregamos el punto al conjunto
     return points
 
@@ -225,42 +228,54 @@ def Funcion_Fitness(distancias, poblacion):
     return lista_fitness
 
 def GetAltura(long, lat, dem):
-    transform = dem.transform
-    x, y = ~transform*(long,lat)    #Aplicamos transformación Affine para pasar de coordenadas espaciales a coordenadas de la imagen (columnas y filas de píxeles)
-    if 0 <= x < dem.width and 0 <= y < dem.height:
-        altura = dem.read(1)[int(y), int(x)]    #Leemos el archivo para obtener la altura de las coordenadas especificadas
+    if 0 <= long < dem.width and 0 <= lat < dem.height:
+        altura = dem.read(1)[int(lat), int(long)]    #Leemos el archivo para obtener la altura de las coordenadas especificadas
         return altura
     #Nota ->    x = Columna;    y = Fila;
 
 def InterpolarPuntos(base, supply, num_puntos):
-    x_base_2, y_base_2 = zip(*base)
-    x_supply_2, y_supply_2 = zip(*supply)
+    x_base_2, y_base_2 = base
+    x_supply_2, y_supply_2 = supply
     x_bases = np.linspace(x_base_2, x_supply_2, num_puntos)
     y_bases = np.linspace(y_base_2, y_supply_2, num_puntos)
     return x_bases, y_bases
 
-def Distancia_Base_Supply_Depot_3D(base,supply):
+def UTM_Geo(easting, northing): #Función para transformar coordenadas de UTM a Geográficas para distancias geodésicas
+    transform_utm = Transformer.from_crs(crs_utm, crs_wgs84)
+    long, lat = transform_utm.transform(easting,northing)
+    return lat, long
+
+def Representacion(Superficie,DistGrid):
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    X = np.arange(0, dem.width, DistGrid)
+    Y = np.arange(0, dem.height, DistGrid)
+    X, Y = np.meshgrid(X, Y)
+    Z = np.array(Superficie)
+    Z = np.transpose(Z)
+    surf=ax.plot_surface(X, Y, Z,cmap='jet', rcount=150, ccount=150, edgecolor='none')
+    fig.colorbar(surf)
+    ax.set_xlabel("Distancia (m)")
+    ax.set_ylabel("Distancia (m)")
+    plt.show()
+
+def Distancia_Base_Supply_Depot_3D(base,supply):    #Bases y SDs como coordenadas UTM
     dist = []
     for i in range(len(supply)):  # Para cada SD calculamos la distancia en 3D a todas las bases
         dist_aux = []
         for j in range(len(base)):
-            x_base, y_base = zip(*base[j])
-            x_SD, y_SD = zip(*supply[i])
-
             # Para calcular distancias en 3D -> Sacamos muchos puntos entre base y SD
             # Calculamos distancias entre los segmentos formados entre cada uno de esos puntos y vamos sumándolas
             # La distancia la calcularemos teniendo en cuenta la distancia geodésica, esto es, teniendo en cuenta la curvatura del segmento
 
             x_puntos, y_puntos = InterpolarPuntos(base[j], supply[i], puntos_interpolado)  # Puntos para segmentos
-
-            altura_puntos = [GetAltura(x, y, dem) for x, y in zip(x_puntos, y_puntos)]  # Sacamos la altura de los puntos interpolados
             distancia = 0.0
             for k in range(len(x_puntos)-1):  #Bucle para hacer el cálculo de distancias
-                punto1 = (x_puntos[i], y_puntos[i])
-                punto2 = (x_puntos[i+1], y_puntos[i+1])
-                distancia_x = geodesic(punto1, punto2).meters   #Distancia geodésica (En el eje x)
-                distancia_y = altura_puntos[i+1] - altura_puntos[i] #Distancia como diferencia de alturas (En el eje y)
-                distancia_segmento = math.sqrt(distancia_x ** 2 + distancia_y ** 2) #Pitágoras para obtener una aproximación de la distancia
+                y_aux, x_aux = UTM_Geo(x_puntos[k], y_puntos[k])
+                y_aux_2, x_aux_2 = UTM_Geo(x_puntos[k+1], y_puntos[k+1])
+                punto1 = (y_aux, x_aux)
+                punto2 = (y_aux_2, x_aux_2)
+                distancia_segmento = geodesic(punto1, punto2).meters   #Distancia geodésica entre los dos puntos
                 distancia += distancia_segmento
             dist_aux.append(distancia)
         dist.append(dist_aux)
@@ -272,34 +287,58 @@ if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
     Num_Generaciones = 10
-    Tam_Individuos = 200
+    Tam_Individuos = 100
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
+    mapa_dem = 'PNOA_MDT05_ETRS89_HU30_0560_LID.tif'
+    puntos_interpolado = 50  # Necesarios para calcular la distancia entre puntos en el mapa en 3D
+    distGrid = 1
+    # Definir el sistema de coordenadas UTM y WGS84
+    crs_utm = CRS.from_epsg(25830)  # EPSG:25830 es UTM zona 30N, ETRS89 (Sistema de referencia geodésica para Europa, propio de este tipo de UTM [EPSG:25830])
+    crs_wgs84 = CRS.from_epsg(4326) # EPSG:4326 es WGS84 (Sistema de referencia geodésico compatible con ETRS89)
+
     Pob_Actual = []
     Costes = []
-    numero_bases = 200
+    numero_bases = 100
     numero_supply_depots = 10
-    capacidad_maxima = 15
+    capacidad_maxima = 20
     puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
+    longitudes_bases, latitudes_bases = list(longitudes_bases), list(latitudes_bases)
     capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
+    longitudes_supply_depots, latitudes_supply_depots = list(longitudes_supply_depots), list(latitudes_supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
-    distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
-
-    mapa_dem = 'PNOA_MDT25_ETRS89_HU30_0560_LID.tif'
-    puntos_interpolado = 150    #Necesarios para calcular la distancia entre puntos en el mapa en 3D
+    # distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
 
     #Leemos el mapa DEM -> La primera banda, ya que suele tener datos de elevaciones
     with rasterio.open(mapa_dem) as dem:
         dem_data = dem.read(1)  # Leer la primera banda
         distancias_3D = Distancia_Base_Supply_Depot_3D(bases, supply_depots)
+        limites = dem.bounds    #Extraemos límites del mapa para hacer la matriz de superficie (Vienen en coordenadas espaciales)
+        pixel_width = (limites.right - limites.left) / dem.width
+        pixel_height = (limites.top - limites.bottom) / dem.height
+        transform = from_origin(limites.left, limites.top, pixel_width, pixel_height)
+
+        #Transformamos coordenadas UTM de los puntos (bases y SDs) a coordenadas de la imagen
+        for i in range(len(longitudes_bases)):
+            longitudes_bases[i], latitudes_bases[i] = ~transform * (longitudes_bases[i], latitudes_bases[i])  # Aplicamos transformación Affine para pasar de coordenadas UTM a coordenadas de la imagen (columnas y filas de píxeles)
+        for i in range(len(longitudes_supply_depots)):
+            longitudes_supply_depots[i], latitudes_supply_depots[i] = ~transform * (longitudes_supply_depots[i], latitudes_supply_depots[i])  # Aplicamos transformación Affine para pasar de coordenadas UTM a coordenadas de la imagen (columnas y filas de píxeles)
+        #altura_puntos = [GetAltura(x, y, dem) for x, y in zip(x_puntos, y_puntos)]  # Sacamos la altura de los puntos interpolados
+        eje_x = np.arange(0, dem.width, distGrid)
+        eje_y = np.arange(0, dem.height, distGrid)
+        matriz_superficie = np.zeros(len(eje_x),len(eje_y))   #Matriz de superficie
+        for i in range(len(eje_x)):
+            for j in range(len(eje_y)):
+                matriz_superficie[i, j] = GetAltura(eje_x[i], eje_y[i], dem)  #Rellenamos la matriz de superficie con las alturas
+        Representacion(matriz_superficie, distGrid)
 
 
 

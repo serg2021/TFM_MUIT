@@ -225,7 +225,7 @@ def Funcion_Fitness(distancias, poblacion):
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 100
+    Num_Generaciones = 20
     Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01

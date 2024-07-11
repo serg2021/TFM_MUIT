@@ -13,6 +13,8 @@ import random
 import math
 import matplotlib.pyplot as plt
 from geopy.distance import geodesic
+import os
+import csv
 
 class EvolutiveClass:
     def __init__(self, Num_Individuos=200, Num_Generaciones=10, Tam_Individuos=1, Num_Max = 10, Prob_Padres=0.5, Prob_Mutacion=0.02, Prob_Cruce=0.5):
@@ -228,6 +230,11 @@ def Funcion_Fitness(distancias, poblacion):
     return lista_fitness
 
 def GetAltura(long, lat, dem):
+    limites = dem.bounds  # Extraemos límites del mapa para hacer la matriz de superficie (Vienen en coordenadas espaciales)
+    pixel_width = (limites.right - limites.left) / dem.width
+    pixel_height = (limites.top - limites.bottom) / dem.height
+    transform = from_origin(limites.left, limites.top, pixel_width, pixel_height)
+    long, lat = ~transform * (long, lat)
     if 0 <= long < dem.width and 0 <= lat < dem.height:
         altura = dem.read(1)[int(lat), int(long)]    #Leemos el archivo para obtener la altura de las coordenadas especificadas
         return altura
@@ -269,13 +276,16 @@ def Distancia_Base_Supply_Depot_3D(base,supply):    #Bases y SDs como coordenada
             # La distancia la calcularemos teniendo en cuenta la distancia geodésica, esto es, teniendo en cuenta la curvatura del segmento
 
             x_puntos, y_puntos = InterpolarPuntos(base[j], supply[i], puntos_interpolado)  # Puntos para segmentos
+            altura_puntos = [GetAltura(x, y, dem) for x, y in zip(x_puntos, y_puntos)]  # Sacamos la altura de los puntos interpolados
             distancia = 0.0
             for k in range(len(x_puntos)-1):  #Bucle para hacer el cálculo de distancias
                 y_aux, x_aux = UTM_Geo(x_puntos[k], y_puntos[k])
                 y_aux_2, x_aux_2 = UTM_Geo(x_puntos[k+1], y_puntos[k+1])
                 punto1 = (y_aux, x_aux)
                 punto2 = (y_aux_2, x_aux_2)
-                distancia_segmento = geodesic(punto1, punto2).meters   #Distancia geodésica entre los dos puntos
+                distancia_x = geodesic(punto1, punto2).meters   #Distancia geodésica entre los dos puntos
+                distancia_y = altura_puntos[k+1] - altura_puntos[k]
+                distancia_segmento = math.sqrt((distancia_x ** 2) + (distancia_y ** 2))
                 distancia += distancia_segmento
             dist_aux.append(distancia)
         dist.append(dist_aux)
@@ -287,13 +297,13 @@ if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
     Num_Generaciones = 10
-    Tam_Individuos = 100
+    Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
     mapa_dem = 'PNOA_MDT05_ETRS89_HU30_0560_LID.tif'
-    puntos_interpolado = 50  # Necesarios para calcular la distancia entre puntos en el mapa en 3D
+    puntos_interpolado = 25  # Necesarios para calcular la distancia entre puntos en el mapa en 3D
     distGrid = 1
     # Definir el sistema de coordenadas UTM y WGS84
     crs_utm = CRS.from_epsg(25830)  # EPSG:25830 es UTM zona 30N, ETRS89 (Sistema de referencia geodésica para Europa, propio de este tipo de UTM [EPSG:25830])
@@ -301,37 +311,74 @@ if __name__ == "__main__":
 
     Pob_Actual = []
     Costes = []
-    numero_bases = 100
+    numero_bases = 200
     numero_supply_depots = 10
     capacidad_maxima = 20
-    puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
+    Ruta_Puntos = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+        f"Bases_SD.csv")
+    Ruta_Capacidades = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+        f"Cap_Bases_SD.csv")
+    if not os.path.exists(Ruta_Puntos):
+        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
+        puntos = np.array(puntos)
+        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
+    else:
+        puntos = []
+        with open(Ruta_Puntos, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                numbers = tuple(numbers)
+                puntos.append(numbers)
+    if not os.path.exists(Ruta_Capacidades):
+        capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
+        np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
+    else:
+        capacidad_bases = []
+        with open(Ruta_Capacidades, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = float(fila[0])
+                capacidad_bases.append(int(numbers))
+            capacidad_bases = np.array(capacidad_bases)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
     longitudes_bases, latitudes_bases = list(longitudes_bases), list(latitudes_bases)
-    capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
     longitudes_supply_depots, latitudes_supply_depots = list(longitudes_supply_depots), list(latitudes_supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
+
 
     # distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
 
     #Leemos el mapa DEM -> La primera banda, ya que suele tener datos de elevaciones
     with rasterio.open(mapa_dem) as dem:
         dem_data = dem.read(1)  # Leer la primera banda
-        distancias_3D = Distancia_Base_Supply_Depot_3D(bases, supply_depots)
-        limites = dem.bounds    #Extraemos límites del mapa para hacer la matriz de superficie (Vienen en coordenadas espaciales)
-        pixel_width = (limites.right - limites.left) / dem.width
-        pixel_height = (limites.top - limites.bottom) / dem.height
-        transform = from_origin(limites.left, limites.top, pixel_width, pixel_height)
-
-        #Transformamos coordenadas UTM de los puntos (bases y SDs) a coordenadas de la imagen
-        for i in range(len(longitudes_bases)):
-            longitudes_bases[i], latitudes_bases[i] = ~transform * (longitudes_bases[i], latitudes_bases[i])  # Aplicamos transformación Affine para pasar de coordenadas UTM a coordenadas de la imagen (columnas y filas de píxeles)
-        for i in range(len(longitudes_supply_depots)):
-            longitudes_supply_depots[i], latitudes_supply_depots[i] = ~transform * (longitudes_supply_depots[i], latitudes_supply_depots[i])  # Aplicamos transformación Affine para pasar de coordenadas UTM a coordenadas de la imagen (columnas y filas de píxeles)
-        #altura_puntos = [GetAltura(x, y, dem) for x, y in zip(x_puntos, y_puntos)]  # Sacamos la altura de los puntos interpolados
+        distancias_Oro = os.path.join(
+            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+            f"dist_Oro.csv")
+        if not os.path.exists(distancias_Oro):
+            distancias_3D = Distancia_Base_Supply_Depot_3D(bases, supply_depots)
+            distancias_3D = np.array(distancias_3D)
+            np.savetxt(distancias_Oro, distancias_3D, delimiter=',')
+        else:
+            distancias_3D = []
+            with open(distancias_Oro, mode='r') as file:
+                csv_reader = csv.reader(file)
+                for fila in csv_reader:
+                    # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                    numbers = [float(x) for x in fila]
+                    distancias_3D_aux = []
+                    for i in range(len(numbers)):
+                        distancias_3D_aux.append(numbers[i])
+                    distancias_3D.append(distancias_3D_aux)
+                distancias_3D = np.array(distancias_3D)
         eje_x = np.arange(0, dem.width, distGrid)
         eje_y = np.arange(0, dem.height, distGrid)
         matriz_superficie = np.zeros(len(eje_x),len(eje_y))   #Matriz de superficie

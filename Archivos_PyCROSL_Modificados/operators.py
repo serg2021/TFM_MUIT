@@ -83,20 +83,20 @@ def mutate_sample(vector, population, params):
     method = params["method"]
     n = round(params["N"])
 
+    low = params.get("Low", -1)
+    if isinstance(low, np.ndarray) and low.size == vector.size:
+        low = low[mask_pos]
+
+    up = params.get("Up", 1)
+    if isinstance(up, np.ndarray) and up.size == vector.size:
+        up = up[mask_pos]
+
+    strength = params.get("F", 1)
+    if isinstance(strength, np.ndarray) and strength.size == vector.size:
+        strength = strength[mask_pos]
+
     if isinstance(vector[0], list):
         mask_pos = np.hstack([np.ones(n), np.zeros(len(vector[0]) - n)]).astype(bool)
-
-        low = params.get("Low", -1)
-        if isinstance(low, np.ndarray) and low.size == vector.size:
-            low = low[mask_pos]
-
-        up = params.get("Up", 1)
-        if isinstance(up, np.ndarray) and up.size == vector.size:
-            up = up[mask_pos]
-    
-        strength = params.get("F", 1)
-        if isinstance(strength, np.ndarray) and strength.size == vector.size:
-            strength = strength[mask_pos]
 
         def media(popul):   #Hace la media para cada columna de la matriz, según indique mask_pos
             popul_matrix_A = [i.solution[0] for i in popul]
@@ -181,6 +181,7 @@ def mutate_sample(vector, population, params):
         mask_pos = np.hstack([np.ones(n), np.zeros(vector.size - n)]).astype(bool)
         np.random.shuffle(mask_pos)
 
+        popul_matrix = np.vstack([i.solution for i in population])
         mean = popul_matrix.mean(axis=0)[mask_pos]  #Hace la media para cada columna de la matriz, según indique mask_pos
         std = np.maximum(popul_matrix.std(axis=0)[mask_pos], 1e-6) * strength  # ensure there will be some standard deviation
         rand_vec = sampleDistribution(method, n, mean, std, low, up)
@@ -339,7 +340,7 @@ def crossMp(vector1, vector2):
         return aux
 
     else:
-        mask_pos = 1 * (np.random.rand(vector1.shape[1]) > 0.5)    #DESCOMENTAR PARA CADENA DE SUMINISTRO
+        #mask_pos = 1 * (np.random.rand(vector1.shape[1]) > 0.5)    #DESCOMENTAR PARA CADENA DE SUMINISTRO
         mask_pos = 1 * (np.random.rand(vector1.size) > 0.5)
         aux = np.copy(vector1)
 

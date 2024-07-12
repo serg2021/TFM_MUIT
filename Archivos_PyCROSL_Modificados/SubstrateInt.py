@@ -30,8 +30,8 @@ class SubstrateInt(Substrate):
         params = copy.deepcopy(self.params)
 
         if "Cr" in params and "N" not in params:
-            #params["N"] = np.count_nonzero(np.random.random(solution.solution.size) < params["Cr"])    #DESCOMENTAR PARA TIPOS DE RECURSOS
-            params["N"] = np.count_nonzero(np.random.random(len(solution.solution[0])) < params["Cr"])
+            params["N"] = np.count_nonzero(np.random.random(solution.solution.size) < params["Cr"])
+            #params["N"] = np.count_nonzero(np.random.random(len(solution.solution[0])) < params["Cr"])  #DESCOMENTAR PARA TIPOS DE RECURSOS
 
         if "N" in params:
             params["N"] = round(params["N"])
@@ -107,23 +107,24 @@ class SubstrateInt(Substrate):
             print(f"Error: evolution method \"{self.evolution_method}\" not defined")
             exit(1)
 
-        for i in range(len(result[0])):
-            if isinstance(result[0][i], list):
-                result[0][i] = list(set(result[0][i]))
-                for j in range(len(result[0][i])):
-                    if result[0][i][j] > numero_supply_depots-1 or result[0][i][j] < 0:
-                        ind_asig = [l for l, v in enumerate(result[1][i]) if v == result[0][i][j]]
-                        result[0][i][j] = np.random.randint(0,numero_supply_depots)
-                        for k in ind_asig:
-                            result[1][i][k] = result[0][i][j]  # Actualizamos la asignación de clases de la base mutada
-                if len(result[0][i]) == 1:
-                    result[0][i] = result[0][i][0]
-            elif result[0][i] > numero_supply_depots-1 or result[0][i] < 0:
-                ind_asig = [j for j, v in enumerate(result[1][i]) if v == result[0][i]]
-                result[0][i] = np.random.randint(0, numero_supply_depots)
-                for k in ind_asig:
-                    result[1][i][k] = result[0][i]  # Actualizamos la asignación de clases de la base mutada
+        if isinstance(result, list):
+            for i in range(len(result[0])):
+                if isinstance(result[0][i], list):
+                    result[0][i] = list(set(result[0][i]))
+                    for j in range(len(result[0][i])):
+                        if result[0][i][j] > numero_supply_depots-1 or result[0][i][j] < 0:
+                            ind_asig = [l for l, v in enumerate(result[1][i]) if v == result[0][i][j]]
+                            result[0][i][j] = np.random.randint(0,numero_supply_depots)
+                            for k in ind_asig:
+                                result[1][i][k] = result[0][i][j]  # Actualizamos la asignación de clases de la base mutada
+                    if len(result[0][i]) == 1:
+                        result[0][i] = result[0][i][0]
+                elif result[0][i] > numero_supply_depots-1 or result[0][i] < 0:
+                    ind_asig = [j for j, v in enumerate(result[1][i]) if v == result[0][i]]
+                    result[0][i] = np.random.randint(0, numero_supply_depots)
+                    for k in ind_asig:
+                        result[1][i][k] = result[0][i]  # Actualizamos la asignación de clases de la base mutada
 
-        return result       #DESCOMENTAR PARA TIPOS DE RECURSOS
-
-    # return np.round(result)
+            return result
+        else:
+            return np.round(result)

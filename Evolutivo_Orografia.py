@@ -198,7 +198,7 @@ def Puntos_Sin_Repetir(num_points, offset=0.5):
         # Aplicar desplazamiento aleatorio para evitar superposiciones
         latitud_offset = np.random.uniform(low=-offset, high=offset)
         longitud_offset = np.random.uniform(low=-offset, high=offset)
-        point_with_offset = (longitud + longitud_offset, latitud + latitud_offset)
+        point_with_offset = (latitud + latitud_offset, longitud + longitud_offset)
         points.add(point_with_offset)  # Agregamos el punto al conjunto
     return points
 

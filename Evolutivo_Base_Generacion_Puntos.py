@@ -5,16 +5,12 @@
 1º -> Activamos el entorno de conda -> conda activate TFM_MUIT
 2º -> Podemos ejecutar el código sin problemas
 """
-import rasterio
-from rasterio.transform import from_origin
-from pyproj import CRS, Transformer
 import numpy as np
+import rasterio
+from PyCROSL.CRO_SL import CRO_SL
 import random
 import math
 import matplotlib.pyplot as plt
-from geopy.distance import geodesic
-import os
-import csv
 
 class EvolutiveClass:
     def __init__(self, Num_Individuos=200, Num_Generaciones=10, Tam_Individuos=1, Num_Max = 10, Prob_Padres=0.5, Prob_Mutacion=0.02, Prob_Cruce=0.5):
@@ -120,7 +116,7 @@ class EvolutiveClass:
                     break
         return individuo
 
-    def Reparacion_Mayor_Menor (self, individuo, capacidades): #Sustituimos una base de un SD por otra -> Hasta cumplir restricción
+    def Reparacion_Mayor_Menor (self, individuo, capacidades): #Sustituimos una base de un SD por otra (aleatoriamente) -> Hasta cumplir restricción
         capacidades_sd = list(np.zeros(self.Num_Max))   #Capacidades de los SD
         suma_capacidades = list(np.zeros(self.Num_Max)) #Suma de las capacidades de las bases
         for i in range(self.Num_Max):
@@ -189,6 +185,7 @@ class EvolutiveClass:
         return individuo
 
 def Puntos_Sin_Repetir(num_points, offset=0.5):
+    mapa_dem = 'PNOA_MDT05_ETRS89_HU30_0560_LID.tif'
     with rasterio.open(mapa_dem) as dem:
         limites = dem.bounds
     points = set()  # Usamos un conjunto para evitar duplicados
@@ -198,7 +195,7 @@ def Puntos_Sin_Repetir(num_points, offset=0.5):
         # Aplicar desplazamiento aleatorio para evitar superposiciones
         latitud_offset = np.random.uniform(low=-offset, high=offset)
         longitud_offset = np.random.uniform(low=-offset, high=offset)
-        point_with_offset = (longitud + longitud_offset, latitud + latitud_offset)
+        point_with_offset = (latitud + latitud_offset, longitud + longitud_offset)
         points.add(point_with_offset)  # Agregamos el punto al conjunto
     return points
 
@@ -229,171 +226,39 @@ def Funcion_Fitness(distancias, poblacion):
         lista_fitness.append(fitness)
     return lista_fitness
 
-def GetAltura(lat, long, dem):
-    limites = dem.bounds  # Extraemos límites del mapa para hacer la matriz de superficie (Vienen en coordenadas espaciales)
-    pixel_width = (limites.right - limites.left) / dem.width
-    pixel_height = (limites.top - limites.bottom) / dem.height
-    transform = from_origin(limites.left, limites.top, pixel_width, pixel_height)
-    columna, fila = ~transform * (long, lat)
-    if 0 <= columna < dem.width and 0 <= fila < dem.height:
-        altura = dem.read(1)[int(fila), int(columna)]    #Leemos el archivo para obtener la altura de las coordenadas especificadas
-        return altura
-    #Nota ->    x = Columna;    y = Fila;
-
-def InterpolarPuntos(base, supply, num_puntos):
-    x_base_2, y_base_2 = base
-    x_supply_2, y_supply_2 = supply
-    x_bases = np.linspace(x_base_2, x_supply_2, num_puntos)
-    y_bases = np.linspace(y_base_2, y_supply_2, num_puntos)
-    return x_bases, y_bases
-
-def UTM_Geo(easting, northing): #Función para transformar coordenadas de UTM a Geográficas para distancias geodésicas
-    transform_utm = Transformer.from_crs(crs_utm, crs_wgs84)
-    long, lat = transform_utm.transform(easting,northing)
-    return lat, long
-
-def Representacion(Superficie,DistGrid):
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    X = np.arange(0, dem.width, DistGrid)
-    Y = np.arange(0, dem.height, DistGrid)
-    Y, X = np.meshgrid(X, Y)
-    Z = np.array(Superficie)
-    surf=ax.plot_surface(X, Y, Z,cmap='jet', rcount=150, ccount=150, edgecolor='none')
-    fig.colorbar(surf)
-    plt.show()
-
-def Distancia_Base_Supply_Depot_3D(base,supply, dem):    #Bases y SDs como coordenadas UTM
-    dist = []
-    for i in range(len(supply)):  # Para cada SD calculamos la distancia en 3D a todas las bases
-        dist_aux = []
-        for j in range(len(base)):
-            # Para calcular distancias en 3D -> Sacamos muchos puntos entre base y SD
-            # Calculamos distancias entre los segmentos formados entre cada uno de esos puntos y vamos sumándolas
-            # La distancia la calcularemos teniendo en cuenta la distancia geodésica, esto es, teniendo en cuenta la curvatura del segmento
-
-            y_puntos, x_puntos = InterpolarPuntos(base[j], supply[i], puntos_interpolado)  # Puntos para segmentos
-            altura_puntos = [GetAltura(y, x, dem) for y, x in zip(y_puntos, x_puntos)]  # Sacamos la altura de los puntos interpolados
-            distancia = 0.0
-            for k in range(len(x_puntos)-1):  #Bucle para hacer el cálculo de distancias
-                y_aux, x_aux = UTM_Geo(x_puntos[k], y_puntos[k])
-                y_aux_2, x_aux_2 = UTM_Geo(x_puntos[k+1], y_puntos[k+1])
-                punto1 = (y_aux, x_aux)
-                punto2 = (y_aux_2, x_aux_2)
-                distancia_x = geodesic(punto1, punto2).meters   #Distancia geodésica entre los dos puntos
-                distancia_y = altura_puntos[k+1] - altura_puntos[k]
-                distancia_segmento = math.sqrt((distancia_x ** 2) + (distancia_y ** 2))
-                distancia += distancia_segmento
-            dist_aux.append(distancia)
-        dist.append(dist_aux)
-    return dist
-
-
-
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 100
+    Num_Generaciones = 20
     Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
-
-    mapa_dem = 'PNOA_MDT05_ETRS89_HU30_0560_LID.tif'
-    puntos_interpolado = 25  # Necesarios para calcular la distancia entre puntos en el mapa en 3D
-    distGrid = 1
-    # Definir el sistema de coordenadas UTM y WGS84
-    crs_utm = CRS.from_epsg(25830)  # EPSG:25830 es UTM zona 30N, ETRS89 (Sistema de referencia geodésica para Europa, propio de este tipo de UTM [EPSG:25830])
-    crs_wgs84 = CRS.from_epsg(4326) # EPSG:4326 es WGS84 (Sistema de referencia geodésico compatible con ETRS89)
 
     Pob_Actual = []
     Costes = []
     numero_bases = 200
     numero_supply_depots = 10
     capacidad_maxima = 20
-    Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
-        f"Bases_SD.csv")
-    Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
-        f"Cap_Bases_SD.csv")
-    if not os.path.exists(Ruta_Puntos):
-        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
-        puntos = np.array(puntos)
-        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
-    else:
-        puntos = []
-        with open(Ruta_Puntos, mode='r') as file:
-            csv_reader = csv.reader(file)
-            for fila in csv_reader:
-                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
-                numbers = [float(x) for x in fila]
-                numbers = tuple(numbers)
-                puntos.append(numbers)
-    if not os.path.exists(Ruta_Capacidades):
-        capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
-        np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
-    else:
-        capacidad_bases = []
-        with open(Ruta_Capacidades, mode='r') as file:
-            csv_reader = csv.reader(file)
-            for fila in csv_reader:
-                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
-                numbers = float(fila[0])
-                capacidad_bases.append(int(numbers))
-            capacidad_bases = np.array(capacidad_bases)
+    puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    latitudes_bases, longitudes_bases = zip(*bases)
-    latitudes_bases, longitudes_bases = list(latitudes_bases), list(longitudes_bases)
-    with rasterio.open(mapa_dem) as dem:
-        limites = dem.bounds  # Extraemos límites del mapa para hacer la matriz de superficie (Vienen en coordenadas espaciales)
-        pixel_width = (limites.right - limites.left) / dem.width
-        pixel_height = (limites.top - limites.bottom) / dem.height
-        transform = from_origin(limites.left, limites.top, pixel_width, pixel_height)
-    for i in range(len(longitudes_bases)):
-        longitudes_bases[i], latitudes_bases[i] = ~transform * (longitudes_bases[i], latitudes_bases[i])
+    longitudes_bases, latitudes_bases = zip(*bases)
+    capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
-    latitudes_supply_depots, longitudes_supply_depots = list(latitudes_supply_depots), list(longitudes_supply_depots)
-    for i in range(len(longitudes_supply_depots)):
-        longitudes_supply_depots[i], latitudes_supply_depots[i] = ~transform * (longitudes_supply_depots[i], latitudes_supply_depots[i])
+    longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
+    distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
+    #distancias_euclideas_orden = []
+    #for j in indices_capacidad_bases:
+    #    distancias_euclideas_aux = []
+    #    for i in range(0, numero_supply_depots):
+    #        distancias_euclideas_aux.append(distancias_euclideas[i][j])
+    #    distancias_euclideas_orden.append(distancias_euclideas_aux) #Distancias de una base hacia los supply depot ordenadas según su capacidad
+    #distancias_capacidades_bases = list(zip(*[capacidad_bases[indices_capacidad_bases]], [distancias_euclideas_orden[l] for l in range(0, 200)])) #Ordenamos en una única lista
 
-    # distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
-
-    #Leemos el mapa DEM -> La primera banda, ya que suele tener datos de elevaciones
-    with rasterio.open(mapa_dem) as dem:
-        dem_data = dem.read(1)  # Leer la primera banda
-        distancias_Oro = os.path.join(
-            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
-            f"dist_Oro.csv")
-        if not os.path.exists(distancias_Oro):
-            distancias_3D = Distancia_Base_Supply_Depot_3D(bases, supply_depots, dem)
-            distancias_3D = np.array(distancias_3D)
-            np.savetxt(distancias_Oro, distancias_3D, delimiter=',')
-        else:
-            distancias_3D = []
-            with open(distancias_Oro, mode='r') as file:
-                csv_reader = csv.reader(file)
-                for fila in csv_reader:
-                    # Convertir cada elemento de la fila a un número (float o int según sea necesario)
-                    numbers = [float(x) for x in fila]
-                    distancias_3D_aux = []
-                    for i in range(len(numbers)):
-                        distancias_3D_aux.append(numbers[i])
-                    distancias_3D.append(distancias_3D_aux)
-                distancias_3D = np.array(distancias_3D)
-        #eje_x = np.arange(0, dem.width, distGrid)
-        #eje_y = np.arange(0, dem.height, distGrid)
-        #X, Y = np.meshgrid(eje_x, eje_y)
-        #matriz_superficie = dem_data[Y, X]   #Matriz de superficie
-        Representacion(dem_data, distGrid)
-
-
-
-        ### A CONTINUACIÓN, APLICAMOS EL ALGORITMO DESPUÉS DE OBTENER LOS COSTES Y DISTANCIAS
+    ### A CONTINUACIÓN, APLICAMOS EL ALGORITMO DESPUÉS DE OBTENER LOS COSTES Y DISTANCIAS
     
     Ev1 = EvolutiveClass(Num_Individuos, Num_Generaciones, Tam_Individuos,numero_supply_depots, Prob_Padres, Prob_Mutacion, Prob_Cruce)
     #Ev1.ImprimirInformacion()
@@ -401,7 +266,7 @@ if __name__ == "__main__":
     for i in range(Num_Generaciones):
         print(("Generación: " + str(i + 1)))
         Pob_Actual = Ev1.Cruce(Pob_Inicial, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
-        Fitness = Funcion_Fitness(distancias_3D, Pob_Actual)
+        Fitness = Funcion_Fitness(distancias_euclideas, Pob_Actual)
         Pob_Inicial, Costes = Ev1.Seleccion(Pob_Actual,Fitness)
     Sol_Final = Pob_Inicial[0]   #La primera población será la que tenga menor coste
     Coste_Final = Costes[0]
@@ -409,20 +274,12 @@ if __name__ == "__main__":
     for j in range(Tam_Individuos):
         print("Base " + str(j) + "-> SD: " + str(Sol_Final[j]))
     print("Coste de la solución: " + str(Coste_Final))
-
-
     # Graficar el mapa y los puntos
-    dem_data = np.where(dem_data == dem.nodata, np.nan, dem_data)
     plt.figure(figsize=(10, 6))
-    plt.imshow(dem_data, cmap='terrain')
-    plt.colorbar(label='Altura (m)')
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
-    for k in range(numero_supply_depots):
-        SD = [i for i,v in enumerate(Sol_Final) if v == k]  #Sacamos bases asociadas a un SD
-        if len(SD) > 0: # Porque puede haber bases que no tengan asociado el SD de la iteración que toca
-            aux = random.choice(SD)  # Base aleatoria
-            plt.plot([longitudes_bases[aux],longitudes_supply_depots[Sol_Final[aux]]], [latitudes_bases[aux], latitudes_supply_depots[Sol_Final[aux]]],color='red')
+    for k in range(Tam_Individuos):
+        plt.plot([longitudes_bases[k],longitudes_supply_depots[Sol_Final[k]]], [latitudes_bases[k], latitudes_supply_depots[Sol_Final[k]]],color='red')
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')

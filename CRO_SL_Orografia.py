@@ -264,19 +264,21 @@ if __name__ == "__main__":
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     latitudes_bases, longitudes_bases = zip(*bases)
-    latitudes_bases, longitudes_bases = list(latitudes_bases), list(longitudes_bases)
     with rasterio.open(mapa_dem) as dem:
         limites = dem.bounds  # Extraemos límites del mapa para hacer la matriz de superficie (Vienen en coordenadas espaciales)
         pixel_width = (limites.right - limites.left) / dem.width
         pixel_height = (limites.top - limites.bottom) / dem.height
         transform = from_origin(limites.left, limites.top, pixel_width, pixel_height)
+    bases_UTM = []
     for i in range(len(longitudes_bases)):
-        longitudes_bases[i], latitudes_bases[i] = ~transform * (longitudes_bases[i], latitudes_bases[i])
+        lon, lat = transform * (longitudes_bases[i], latitudes_bases[i])
+        bases_UTM.append((lat, lon))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
-    latitudes_supply_depots, longitudes_supply_depots = list(latitudes_supply_depots), list(longitudes_supply_depots)
+    SD_UTM = []
     for i in range(len(longitudes_supply_depots)):
-        longitudes_supply_depots[i], latitudes_supply_depots[i] = ~transform * (longitudes_supply_depots[i], latitudes_supply_depots[i])
+        lon, lat = transform * (longitudes_supply_depots[i], latitudes_supply_depots[i])
+        SD_UTM.append((lat, lon))
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
     #distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
@@ -358,7 +360,7 @@ if __name__ == "__main__":
     plt.figure(figsize=(10, 6))
     plt.imshow(dem_data, cmap='terrain')
     plt.colorbar(label='Altura (m)')
-    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_bases, latitudes_bases, color='white', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
     for k in range(numero_supply_depots):
         SD = [i for i,v in enumerate(solution) if v == k]  #Sacamos bases asociadas a un SD

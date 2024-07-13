@@ -11,6 +11,8 @@ from PyCROSL.CRO_SL import CRO_SL
 import random
 import math
 import matplotlib.pyplot as plt
+import os
+import csv
 
 class EvolutiveClass:
     def __init__(self, Num_Individuos=200, Num_Generaciones=10, Tam_Individuos=1, Num_Max = 10, Prob_Padres=0.5, Prob_Mutacion=0.02, Prob_Cruce=0.5):
@@ -186,17 +188,16 @@ class EvolutiveClass:
 
 def Puntos_Sin_Repetir(num_points, offset=0.5):
     mapa_dem = 'PNOA_MDT05_ETRS89_HU30_0560_LID.tif'
-    with rasterio.open(mapa_dem) as dem:
-        limites = dem.bounds
     points = set()  # Usamos un conjunto para evitar duplicados
-    while len(points) < num_points:
-        latitud = np.random.uniform(low=limites.bottom, high=limites.top)
-        longitud = np.random.uniform(low=limites.left, high=limites.right)
-        # Aplicar desplazamiento aleatorio para evitar superposiciones
-        latitud_offset = np.random.uniform(low=-offset, high=offset)
-        longitud_offset = np.random.uniform(low=-offset, high=offset)
-        point_with_offset = (latitud + latitud_offset, longitud + longitud_offset)
-        points.add(point_with_offset)  # Agregamos el punto al conjunto
+    with rasterio.open(mapa_dem) as dem:
+        while len(points) < num_points:
+            latitud = np.random.uniform(low=0, high=dem.height)
+            longitud = np.random.uniform(low=0, high=dem.width)
+            # Aplicar desplazamiento aleatorio para evitar superposiciones
+            latitud_offset = np.random.uniform(low=-offset, high=offset)
+            longitud_offset = np.random.uniform(low=-offset, high=offset)
+            point_with_offset = (latitud + latitud_offset, longitud + longitud_offset)
+            points.add(point_with_offset)  # Agregamos el punto al conjunto
     return points
 
 def Distancia_Base_Supply_Depot_2D(base, supply):
@@ -240,6 +241,22 @@ if __name__ == "__main__":
     numero_bases = 200
     numero_supply_depots = 10
     capacidad_maxima = 20
+    Ruta_Puntos = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+        f"Bases_SD.csv")
+    if not os.path.exists(Ruta_Puntos):
+        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
+        puntos = np.array(puntos)
+        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
+    else:
+        puntos = []
+        with open(Ruta_Puntos, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                numbers = tuple(numbers)
+                puntos.append(numbers)
     puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]

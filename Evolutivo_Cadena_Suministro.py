@@ -10,6 +10,8 @@ from PyCROSL.CRO_SL import CRO_SL
 import random
 import math
 import matplotlib.pyplot as plt
+import os
+import csv
 
 class EvolutiveClass:
     def __init__(self, Num_Individuos=200, Num_Generaciones=10, Tam_Individuos=1, Num_Max = 10, Prob_Padres=0.5, Prob_Mutacion=0.02, Prob_Cruce=0.5):
@@ -48,13 +50,13 @@ class EvolutiveClass:
                 Pob_Ini_List.append(Pob_Ini)
             else:
                 Pob_Ini_List.append(Pob_Ini)
-        return Pob_Ini_List
+        return np.array(Pob_Ini_List)
 
     def Seleccion(self, poblacion_inicial, coste):
         index = np.argsort(coste)
         coste_ordenado = np.sort(coste)
         poblacion_actual = poblacion_inicial[index][:]   #La población tendrá más soluciones que la inicial debido al cruce
-        poblacion_actual = poblacion_actual[0:self.Num_Individuos][:]    #Nos quedamos con los mejores individuos
+        poblacion_actual = poblacion_actual[0:self.Num_Padres][:]    #Nos quedamos con los mejores individuos
         return poblacion_actual, coste_ordenado
 
     def Cruce (self, poblacion, capacidades, Num_Max = None):
@@ -62,7 +64,7 @@ class EvolutiveClass:
             Num_Max = self.Num_Max
         capacidades_sd = list(np.zeros(self.Num_Max))   #Capacidades de los SD
         #Indice_Seleccionado = []
-        Indices_Validos = list(np.arange(self.Num_Individuos))
+        Indices_Validos = list(np.arange(self.Num_Padres))
 
         for v in range(self.Num_Individuos - self.Num_Padres): #Bucle para generar HIJOS
             Indice_Padres = random.sample(Indices_Validos, 2)
@@ -113,7 +115,7 @@ class EvolutiveClass:
 
             if(self.Comprobacion_Individuo(Hijo, capacidades, distancias_euclideas)):                    # Se comprueba si hay que reparar el hijo
                  Hijo = self.Reparacion_Mayor_Menor(Hijo, capacidades, distancias_euclideas)
-            poblacion = np.insert(poblacion,self.Num_Individuos+v,Hijo, axis = 0)   # Se añade a la población una vez que ha mutado y se ha reparado
+            poblacion = np.insert(poblacion,self.Num_Padres +v,Hijo, axis = 0)   # Se añade a la población una vez que ha mutado y se ha reparado
         return poblacion
 
     def Mutacion (self, individuo, Num_Max=None):                                
@@ -428,18 +430,61 @@ if __name__ == "__main__":
     numero_bases = 200
     numero_supply_depots = 10
     capacidad_maxima = 20
+    Ruta_Puntos = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        f"Bases_SD.csv")
+    Ruta_Intermediarios = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        f"Intermediarios.csv")
+    Ruta_Capacidades = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        f"Cap_Bases_SD.csv")
+    if not os.path.exists(Ruta_Puntos):
+        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
+        puntos = np.array(puntos)
+        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
+    else:
+        puntos = []
+        with open(Ruta_Puntos, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                numbers = tuple(numbers)
+                puntos.append(numbers)
     capacidad_bases = np.zeros(numero_bases)
-    puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    ind_intermediarios = np.array(random.sample(range(len(bases)),int(len(bases)*0.2)))   #Extraigo índices de intermediarios de forma aleatoria
+    if not os.path.exists(Ruta_Intermediarios):
+        ind_intermediarios = np.array(random.sample(range(len(bases)), int(len(bases) * 0.2)))  # Extraigo índices de intermediarios de forma aleatoria
+        np.savetxt(Ruta_Intermediarios, ind_intermediarios, delimiter=',')
+    else:
+        ind_intermediarios = []
+        with open(Ruta_Intermediarios, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                ind_intermediarios.append(int(numbers[0]))
+            ind_intermediarios = np.array(ind_intermediarios)
     intermediarios = [bases[i] for i in ind_intermediarios]
     ind_bases_antes = np.array([i for i, elemento in enumerate(bases) if elemento not in intermediarios])
     bases = list(set(bases) - set(intermediarios))  #Actualizamos el número de bases sin contar intermediarios
     longitudes_bases, latitudes_bases = zip(*bases)
     longitudes_inter, latitudes_inter = zip(*intermediarios)
-    capacidad_bases[ind_bases_antes] = np.random.randint(1, capacidad_maxima, size=len(bases))
-    capacidad_bases[ind_intermediarios] = np.random.randint(10, capacidad_maxima, size=len(intermediarios))
+    if not os.path.exists(Ruta_Capacidades):
+        capacidad_bases[ind_bases_antes] = np.random.randint(1, capacidad_maxima, size=len(bases))
+        capacidad_bases[ind_intermediarios] = np.random.randint(10, capacidad_maxima, size=len(intermediarios))
+        np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
+    else:
+        capacidad_bases = []
+        with open(Ruta_Capacidades, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = float(fila[0])
+                capacidad_bases.append(int(numbers))
+            capacidad_bases = np.array(capacidad_bases)
     capacidad_bases = list(capacidad_bases)
     #capacidad_inters = np.random.randint(10, capacidad_maxima, size=(len(intermediarios)))  #Les doy capacidades
     #capacidad_bases = np.concatenate((capacidad_bases, capacidad_inters))
@@ -463,15 +508,16 @@ if __name__ == "__main__":
         if v in ind_intermediarios:
             print("Intermediario: " + str(v) + " -> Capacidad: " + str(capacidad_bases[v]))
 
+    Costes_Generacion = []
     Ev1 = EvolutiveClass(Num_Individuos, Num_Generaciones, Tam_Individuos,numero_supply_depots, Prob_Padres, Prob_Mutacion, Prob_Cruce)
-    #Ev1.ImprimirInformacion()
     Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
     for i in range(Num_Generaciones):
         print(("Generación: " + str(i+1)))
-        Pob_Actual = Ev1.Cruce(Pob_Inicial, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
-        Fitness = Funcion_Fitness(distancias_euclideas, Pob_Actual)
-        Pob_Inicial, Costes = Ev1.Seleccion(Pob_Actual, Fitness)
+        Fitness = Funcion_Fitness(distancias_euclideas, Pob_Inicial)
+        Pob_Actual, Costes = Ev1.Seleccion(Pob_Inicial, Fitness)
+        Pob_Inicial = Ev1.Cruce(Pob_Actual, capacidad_bases, numero_supply_depots)  # Aplicamos cruce en las soluciones
         print("Coste: " + str(Costes[0]))
+        Costes_Generacion.append(Costes[0])
     Sol_Final = Pob_Inicial[0]   #El primer individuo de la población será el que tenga menor coste
     Coste_Final = Costes[0]
     print("Solución final:")
@@ -482,6 +528,16 @@ if __name__ == "__main__":
 
     # Graficar el mapa y los puntos
     lista_base_indices = []
+    fig = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    fig.show()
+    #Evolución del coste
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Costes_Generacion)
+    coste.show()
+    #Graficar solución
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
@@ -489,18 +545,18 @@ if __name__ == "__main__":
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
     for v in range(len(ind_intermediarios)):
-            if isinstance(Sol_Final[1], float):
-                Sol_Final[1] = list(np.zeros(numero_bases))
-            base_indices = [i for i, x in enumerate(Sol_Final[1]) if x == ind_intermediarios[v]]
-            for j in base_indices:
-                plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
-            lista_base_indices.extend(base_indices)
-    for k in range(Tam_Individuos):
-        Sol_Final[0][k] = int(Sol_Final[0][k])
-        if k not in lista_base_indices:
-            plt.plot([longitudes_bases[k],longitudes_supply_depots[Sol_Final[0][k]]], [latitudes_bases[k], latitudes_supply_depots[Sol_Final[0][k]]],color='red')
-        if k in ind_intermediarios:
-            plt.plot([longitudes_bases[k],longitudes_supply_depots[Sol_Final[0][k]]], [latitudes_bases[k], latitudes_supply_depots[Sol_Final[0][k]]],color='red')
+        if isinstance(Sol_Final[1], float):
+            Sol_Final[1] = list(np.zeros(numero_bases))
+        base_indices = [i for i, x in enumerate(Sol_Final[1]) if x == ind_intermediarios[v]]
+        for j in base_indices:
+            plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
+        lista_base_indices.extend(base_indices)
+    for k in range(numero_supply_depots):
+        SD = [i for i, v in enumerate(Sol_Final[0]) if v == k]  # Sacamos bases asociadas a un SD
+        if len(SD) > 0:
+            for l in range(len(SD)):
+                if SD[l] in ind_intermediarios:
+                    plt.plot([longitudes_bases[SD[l]],longitudes_supply_depots[Sol_Final[0][SD[l]]]], [latitudes_bases[SD[l]], latitudes_supply_depots[Sol_Final[0][SD[l]]]],color='red')
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')

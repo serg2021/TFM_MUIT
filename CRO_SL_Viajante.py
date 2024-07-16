@@ -1,11 +1,12 @@
 import numpy as np
 from PyCROSL.CRO_SL import *
 from PyCROSL.AbsObjectiveFunc import *
-from PyCROSL.SubstrateReal import *
 from PyCROSL.SubstrateInt import *
 import random
 import math
 import matplotlib.pyplot as plt
+import os
+import csv
 
 
 class Fitness(AbsObjectiveFunc):
@@ -17,6 +18,7 @@ class Fitness(AbsObjectiveFunc):
         if len(solution) == numero_bases:
             return Funcion_Fitness(distancias_euclideas, solution)
         if len(solution) < numero_bases:
+            solution_normal.astype(int)
             return Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, solution, solution_normal, indices_bases_SD)
 
     def random_solution(self):  #Generamos una población inicial -> Solo indicamos cómo serán las soluciones y las reparamos una vez se generen, el resto lo hace el algoritmo
@@ -90,7 +92,8 @@ def Funcion_Fitness(distancias, individuo):
     return fitness
 
 def Funcion_Fitness_Viajante(distancias, dist, individuo, pob, indices):
-    SD = pob[indices[0]]
+    pob_2 = pob.astype(int)
+    SD = pob_2[indices[0]]
     fitness = 0
     indices_orden = list(np.argsort(individuo))  #Sacamos el orden de los índices para verlos de forma consecutiva
     for j in range(len(indices_orden)-1):
@@ -206,15 +209,44 @@ if __name__ == "__main__":
     Pob_Actual = []
     Costes = []
     poblacion_inicial = 100
-    Num_Gen = 100
+    Num_Gen = 10
     numero_bases = 200
     numero_supply_depots = 10
     capacidad_maxima = 20
-    puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
+    Ruta_Puntos = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        f"Bases_SD.csv")
+    Ruta_Capacidades = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        f"Cap_Bases_SD.csv")
+    if not os.path.exists(Ruta_Puntos):
+        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
+        puntos = np.array(puntos)
+        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
+    else:
+        puntos = []
+        with open(Ruta_Puntos, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                numbers = tuple(numbers)
+                puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
-    capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
+    if not os.path.exists(Ruta_Capacidades):
+        capacidad_bases = np.random.randint(1, capacidad_maxima, size=len(bases))
+        np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
+    else:
+        capacidad_bases = []
+        with open(Ruta_Capacidades, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = float(fila[0])
+                capacidad_bases.append(int(numbers))
+            capacidad_bases = np.array(capacidad_bases)
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
@@ -259,24 +291,13 @@ if __name__ == "__main__":
     ]
 
     Coral = CRO_SL(objfunc,operators,params)
-    solution_normal, obj_value =Coral.optimize()
+    solution_normal, obj_value = Coral.optimize()
     solution_normal.astype(int)
 
     print("Solución final:")
     for j in range(numero_bases):
         print("Base " + str(j) + "-> SD: " + str(solution_normal[j]))
     print("Coste final: " + str(obj_value))
-    #Graficamos la solución
-    plt.figure(figsize=(10, 6))
-    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
-    for k in range(numero_bases):
-        plt.plot([longitudes_bases[k],longitudes_supply_depots[solution_normal[k]]], [latitudes_bases[k], latitudes_supply_depots[solution_normal[k]]],color='red')
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
-    plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
-    plt.show()
 
     ### AQUÍ COMIENZA EL PROBLEMA DEL VIAJANTE
 
@@ -330,8 +351,18 @@ if __name__ == "__main__":
         print("Coste Solución " + str(i) + ": " + str(Costes_Viajante))
         Lista_Sol_Final.append(solution_Viajante)
 
+
+    # Graficar el mapa y los puntos
+    fig = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    fig.show()
+    #Evolución del coste de una de las rutas
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Coral.history)
+    coste.show()
     # Graficamos las rutas óptimas
-    colores = ['green', 'blue', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'black', 'cyan']
+    colores = ['green', 'magenta', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'black', 'cyan']
     plt.figure(2, figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',

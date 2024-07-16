@@ -5,6 +5,8 @@ from PyCROSL.SubstrateInt import *
 import random
 import math
 import matplotlib.pyplot as plt
+import os
+import csv
 
 
 class Fitness(AbsObjectiveFunc):
@@ -267,19 +269,63 @@ if __name__ == "__main__":
     poblacion_inicial = 100
     numero_bases = 200
     numero_supply_depots = 10
-    capacidad_maxima = 20
+    capacidad_maxima = 15
+    Ruta_Puntos = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        f"Bases_SD.csv")
+    Ruta_Intermediarios = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        f"Intermediarios.csv")
+    Ruta_Capacidades = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        f"Cap_Bases_SD.csv")
+    if not os.path.exists(Ruta_Puntos):
+        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
+        puntos = np.array(puntos)
+        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
+    else:
+        puntos = []
+        with open(Ruta_Puntos, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                numbers = tuple(numbers)
+                puntos.append(numbers)
     capacidad_bases = np.zeros(numero_bases)
-    puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    ind_intermediarios = np.array(random.sample(range(len(bases)),int(len(bases)*0.2)))   #Extraigo índices de intermediarios de forma aleatoria
+    if not os.path.exists(Ruta_Intermediarios):
+        ind_intermediarios = np.array(random.sample(range(len(bases)), int(len(
+            bases) * 0.2)))  # Extraigo índices de intermediarios de forma aleatoria
+        np.savetxt(Ruta_Intermediarios, ind_intermediarios, delimiter=',')
+    else:
+        ind_intermediarios = []
+        with open(Ruta_Intermediarios, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                ind_intermediarios.append(int(numbers[0]))
+            ind_intermediarios = np.array(ind_intermediarios)
     intermediarios = [bases[i] for i in ind_intermediarios]
     ind_bases_antes = np.array([i for i, elemento in enumerate(bases) if elemento not in intermediarios])
     bases = list(set(bases) - set(intermediarios))  #Actualizamos el número de bases sin contar intermediarios
     longitudes_bases, latitudes_bases = zip(*bases)
     longitudes_inter, latitudes_inter = zip(*intermediarios)
-    capacidad_bases[ind_bases_antes] = np.random.randint(1, capacidad_maxima, size=len(bases))
-    capacidad_bases[ind_intermediarios] = np.random.randint(10, capacidad_maxima, size=len(intermediarios))
+    if not os.path.exists(Ruta_Capacidades):
+        capacidad_bases[ind_bases_antes] = np.random.randint(1, capacidad_maxima, size=len(bases))
+        capacidad_bases[ind_intermediarios] = np.random.randint(10, capacidad_maxima, size=len(intermediarios))
+        np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
+    else:
+        capacidad_bases = []
+        with open(Ruta_Capacidades, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = float(fila[0])
+                capacidad_bases.append(int(numbers))
+            capacidad_bases = np.array(capacidad_bases)
     capacidad_bases = list(capacidad_bases)
     #capacidad_inters = np.random.randint(10, capacidad_maxima, size=(len(intermediarios)))  #Les doy capacidades
     #capacidad_bases = np.concatenate((capacidad_bases, capacidad_inters))
@@ -306,7 +352,7 @@ if __name__ == "__main__":
         "stop_cond": "Ngen",   #Condición de parada
         "time_limit": 4000.0,   #Tiempo límite (real, no de CPU) de ejecución
         "Ngen": 100,  #Número de generaciones
-        "Neval": 3e3,   #Número de evaluaciones de la función objetivo
+        "Neval": 5100,   #Número de evaluaciones de la función objetivo
         "fit_target": 50,   #Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 
         "verbose": True,    #Informe periódico de cómo va el algoritmo
@@ -317,7 +363,7 @@ if __name__ == "__main__":
         "dyn_method": "success",    #Determina la probabilidad de elegir un substrato para cada coral en la siguiente generación -> Con 'success' usa el ratio de larvas exitosas en cada generación
         "dyn_metric": "best",    #Determina cómo agregar los valores de cada substrato para obtener la medida de cada uno
         "dyn_steps": 10,    #Número de evaluaciones por cada substrato
-        "prob_amp": 0.01    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
+        "prob_amp": 0.001    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
     }
 
     operators = [
@@ -337,6 +383,16 @@ if __name__ == "__main__":
 
     #Graficamos la solución
     lista_base_indices = []
+    fig = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    fig.show()
+    #Evolución del coste
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Coral.history)
+    coste.show()
+    #Graficar solución
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
@@ -350,12 +406,13 @@ if __name__ == "__main__":
         for j in base_indices:
             plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
         lista_base_indices.extend(base_indices)
-    for k in range(numero_bases):
-        solution[0][k] = int(solution[0][k])
-        if k not in lista_base_indices:
-            plt.plot([longitudes_bases[k],longitudes_supply_depots[solution[0][k]]], [latitudes_bases[k], latitudes_supply_depots[solution[0][k]]],color='red')
-        if k in ind_intermediarios:
-            plt.plot([longitudes_bases[k],longitudes_supply_depots[solution[0][k]]], [latitudes_bases[k], latitudes_supply_depots[solution[0][k]]],color='red')
+    for k in range(numero_supply_depots):
+        SD = [i for i, v in enumerate(solution[0]) if v == k]  # Sacamos bases asociadas a un SD
+        if len(SD) > 0:
+            for l in range(len(SD)):
+                if SD[l] in ind_intermediarios:
+                    plt.plot([longitudes_bases[SD[l]], longitudes_supply_depots[solution[0][SD[l]]]],
+                             [latitudes_bases[SD[l]], latitudes_supply_depots[solution[0][SD[l]]]], color='red')
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')

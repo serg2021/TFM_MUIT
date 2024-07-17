@@ -1,12 +1,13 @@
 import numpy as np
 from PyCROSL.CRO_SL import *
 from PyCROSL.AbsObjectiveFunc import *
-from PyCROSL.SubstrateReal import *
 from PyCROSL.SubstrateInt import *
 import random
 import math
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import os
+import csv
 
 
 class Fitness(AbsObjectiveFunc):
@@ -22,7 +23,7 @@ class Fitness(AbsObjectiveFunc):
         Asig_Clases_SD =np.full((numero_bases, numero_clases),numero_supply_depots)  # Para cambiar la asignación de la capacidad de un recurso de una base a distintos SD
         Asig_Clases_SD = Asig_Clases_SD.tolist()
         for k in range(self.size):
-            ind_clases = [i for i, v in enumerate(lista_clases_base[k]) if v != 0]
+            ind_clases = [i for i, v in enumerate(lista_clases_base[k]) if isinstance(v, str)]
             for l in ind_clases:
                 Asig_Clases_SD[k][l] = Pob_Ini[k]
         Pob_Ini = [Pob_Ini, Asig_Clases_SD]
@@ -120,7 +121,7 @@ def Comprobacion_Individuo (individuo, capacidades):
                 if value == i:
                     indices_bases.append(j)
         for j in range(len(indices_bases)):
-            ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases[j]]) if v != 0]  # Sacamos qué clases tiene esa base
+            ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases[j]]) if isinstance(v, str)]  # Sacamos qué clases tiene esa base
             for k in ind_clases:  # Bucle para cada clase de esa base
                 if individuo[1][indices_bases[j]][k] == i:  # Comprobamos que para esa clase esté asignado el SD correspondiente
                     comprobar_capacidades = capacidades[indices_bases[j]][k]
@@ -150,7 +151,7 @@ def Reparacion_Mayor_Menor (individuo, capacidades): #Sustituimos una base de un
         for s in range(numero_clases):  # Inicializamos a 0 todas las sumas de capacidades para la comprobación
             suma_capacidades[SD_ind][s] = 0
         for j in range(len(indices_bases_reparar)):
-            ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_reparar[j]]) if v != 0]  # Sacamos qué clases tiene esa base
+            ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_reparar[j]]) if isinstance(v, str)]  # Sacamos qué clases tiene esa base
             for k in ind_clases:  # Bucle para cada clase de esa base
                 if individuo[1][indices_bases_reparar[j]][k] == SD_ind:  # Comprobamos que para esa clase esté asignado el SD correspondiente
                     capacidades_sd_i = capacidades[indices_bases_reparar[j]][k]
@@ -270,7 +271,7 @@ def Reparacion_Mayor_Menor (individuo, capacidades): #Sustituimos una base de un
                                 for s in range(numero_clases):  # Inicializamos a 0 todas las sumas de capacidades para la comprobación
                                     suma_capacidades[SD_ind][s] = 0
                                 for j in range(len(indices_bases_SD)):
-                                    ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_SD[j]]) if v != 0]  # Sacamos qué clases tiene esa base
+                                    ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_SD[j]]) if isinstance(v, str)]  # Sacamos qué clases tiene esa base
                                     for t in ind_clases:  # Bucle para cada clase de esa base
                                         if individuo[1][indices_bases_SD[j]][t] == SD_ind:  # Comprobamos que para esa clase esté asignado el SD correspondiente
                                             capacidades_sd_i = capacidades[indices_bases_SD[j]][t]
@@ -448,7 +449,7 @@ def Reparacion_Mayor_Menor (individuo, capacidades): #Sustituimos una base de un
                     for s in range(numero_clases):  # Inicializamos a 0 todas las sumas de capacidades para la comprobación
                         suma_capacidades[SD_ind][s] = 0
                     for j in range(len(indices_bases_SD)):
-                        ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_SD[j]]) if v != 0]  # Sacamos qué clases tiene esa base
+                        ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_SD[j]]) if isinstance(v, str)]  # Sacamos qué clases tiene esa base
                         for t in ind_clases:  # Bucle para cada clase de esa base
                             if individuo[1][indices_bases_SD[j]][t] == SD_ind:  # Comprobamos que para esa clase esté asignado el SD correspondiente
                                 capacidades_sd_i = capacidades[indices_bases_SD[j]][t]
@@ -475,7 +476,7 @@ def Reparacion_Mayor_Menor (individuo, capacidades): #Sustituimos una base de un
                 else:
                     break
     for i in range(len(individuo[0])):  #La asignación de clases está bien hecha, que es lo importante. Con esto aseguramos que la solución coincida
-        indice_3 = [v for j,v in enumerate(individuo[1][i]) if v != 30]
+        indice_3 = [v for j,v in enumerate(individuo[1][i]) if v != numero_supply_depots]
         indice_3 = list(set(indice_3))
         if len(indice_3) == 1:
             individuo[0][i] = indice_3[0]
@@ -490,62 +491,133 @@ if __name__ == "__main__":
     Pob_Actual = []
     Costes = []
     poblacion_inicial = 100
-    Num_Gen = 20
+    Num_Gen = 100
     numero_bases = 200
     numero_supply_depots = 30
     capacidad_maxima = 20
     numero_clases = 5
-    puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
+    Ruta_Puntos = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Bases_SD.csv")
+    Ruta_Capacidades = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Cap_Bases.csv")
+    Ruta_Clases_Bases = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Clases_Bases.csv")
+    Ruta_Caps_Clases_Bases = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Caps_Clases_Bases.csv")
+    Ruta_Caps_Clases_SD = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Caps_Clases_SD.csv")
+    if not os.path.exists(Ruta_Puntos):
+        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
+        puntos = np.array(puntos)
+        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
+    else:
+        puntos = []
+        with open(Ruta_Puntos, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                numbers = tuple(numbers)
+                puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
-    capacidad_bases = list(np.random.randint(1, capacidad_maxima, size=(numero_bases)))
+    if not os.path.exists(Ruta_Capacidades):
+        capacidad_bases = np.random.randint(1, capacidad_maxima, size=len(bases))
+        np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
+    else:
+        capacidad_bases = []
+        with open(Ruta_Capacidades, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = float(fila[0])
+                capacidad_bases.append(int(numbers))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = list(np.full(numero_supply_depots,200))
 
-    lista_clases_base = []
     clases = ['A', 'B', 'C', 'D', 'E']
-    for i in range(numero_bases):
-        while True:
-            vector_clase = list(np.zeros(numero_clases))
-            caps_bases_clases = list(np.zeros(numero_clases, dtype=int))
-            cont = 0
-            for j in range(len(clases)):
-                if random.choice([True, False]):    #Generamos aleatoriamente bases que pidan un conjunto de recursos distintos entre sí
-                    vector_clase[j] = clases[j]
-                    cont += 1
-            if any(isinstance(x,str) for x in vector_clase):    #Si me saca un array a 0's, le obligo a volver a hacerlo hasta que sea diferente
-                break
-        if capacidad_bases[i] < cont:
-            capacidad_bases[i] = cont   #Hacemos esto para que, si la capacidad de la base es tan baja que no da para todas las clases, forzamos a que tenga más
-        if capacidad_bases[i] % cont == 0:  #Quiere decir que la capacidad se reparte de forma equitativa entre las clases
-            for k in range(len(clases)):
-                if vector_clase[k] == 0:
-                    caps_bases_clases[k] = 0
-                else:
-                    caps_bases_clases[k] = int(capacidad_bases[i]/cont)
-        elif capacidad_bases[i] % cont > 0:  #Quiere decir que la capacidad de una clase será 1 unidad mayor
-            indices_clases = [j for j, v in enumerate(vector_clase) if v != 0]  # Sacamos índices donde hay clases
-            ind = random.choice(indices_clases) #Elegimos uno aleatoriamente
-            caps_bases_clases[ind] = int(capacidad_bases[i]/cont) + (capacidad_bases[i] % cont)  #Para esa clase habrá un poco más que para el resto
-            for k in range(len(clases)):
-                if vector_clase[k] == 0:
-                    caps_bases_clases[k] = 0
-                elif k != ind:
-                    caps_bases_clases[k] = int(capacidad_bases[i]/cont)
-        capacidad_bases[i] = tuple(caps_bases_clases)
-        lista_clases_base.append(vector_clase)
+    if not os.path.exists(Ruta_Clases_Bases) or not os.path.exists(Ruta_Caps_Clases_Bases):
+        lista_clases_base = []
+        for i in range(numero_bases):
+            while True:
+                vector_clase = list(np.zeros(numero_clases))
+                caps_bases_clases = list(np.zeros(numero_clases, dtype=int))
+                cont = 0
+                for j in range(len(clases)):
+                    if random.choice([True, False]):  # Generamos aleatoriamente bases que pidan un conjunto de recursos distintos entre sí
+                        vector_clase[j] = clases[j]
+                        cont += 1
+                if any(isinstance(x, str) for x in
+                       vector_clase):  # Si me saca un array a 0's, le obligo a volver a hacerlo hasta que sea diferente
+                    break
+            if capacidad_bases[i] < cont:
+                capacidad_bases[i] = cont  # Hacemos esto para que, si la capacidad de la base es tan baja que no da para todas las clases, forzamos a que tenga más
+            if capacidad_bases[i] % cont == 0:  # Quiere decir que la capacidad se reparte de forma equitativa entre las clases
+                for k in range(len(clases)):
+                    if vector_clase[k] == 0:
+                        caps_bases_clases[k] = 0
+                    else:
+                        caps_bases_clases[k] = int(capacidad_bases[i] / cont)
+            elif capacidad_bases[i] % cont > 0:  # Quiere decir que la capacidad de una clase será 1 unidad mayor
+                indices_clases = [j for j, v in enumerate(vector_clase) if isinstance(v, str)]  # Sacamos índices donde hay clases
+                ind = random.choice(indices_clases)  # Elegimos uno aleatoriamente
+                caps_bases_clases[ind] = int(capacidad_bases[i] / cont) + (capacidad_bases[i] % cont)  # Para esa clase habrá un poco más que para el resto
+                for k in range(len(clases)):
+                    if vector_clase[k] == 0:
+                        caps_bases_clases[k] = 0
+                    elif k != ind:
+                        caps_bases_clases[k] = int(capacidad_bases[i] / cont)
+            capacidad_bases[i] = tuple(caps_bases_clases)
+            lista_clases_base.append(vector_clase)
+        capacidad_bases = np.array(capacidad_bases)
+        np.savetxt(Ruta_Caps_Clases_Bases, capacidad_bases, delimiter=',')
+        with open(Ruta_Clases_Bases, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerows(lista_clases_base)
+    else:
+        lista_clases_base = []
+        capacidad_bases = []
+        with open(Ruta_Clases_Bases, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) if x == '0.0' else x for x in fila]
+                lista_clases_base.append(numbers)
+        with open(Ruta_Caps_Clases_Bases, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                capacidad_bases.append(numbers)
+            capacidad_bases = np.array(capacidad_bases)
 
-    lista_clases_SD = []
-    for i in range(numero_supply_depots):
-        caps_SD_clases = []
-        vector_clase = list(np.zeros(numero_clases, dtype=int))
-        for j in range(len(clases)):    #Todos los SD podrán dar todo tipo de recursos
-            vector_clase[j] = clases[j]
-            caps_SD_clases.append(200/len(clases))
-        lista_clases_SD.append(vector_clase)
-        capacidad_supply_depots[i] = tuple(caps_SD_clases)  #Como un SD tiene un Cap Máxima, cada clase también lo tendrá
+    if not os.path.exists(Ruta_Caps_Clases_SD):
+        lista_clases_SD = []
+        for i in range(numero_supply_depots):
+            caps_SD_clases = []
+            vector_clase = list(np.zeros(numero_clases, dtype=int))
+            for j in range(len(clases)):  # Todos los SD podrán dar todo tipo de recursos
+                vector_clase[j] = clases[j]
+                caps_SD_clases.append(200 / len(clases))
+            lista_clases_SD.append(vector_clase)
+            capacidad_supply_depots[i] = tuple(caps_SD_clases)  # Como un SD tiene un Cap Máxima, cada clase también lo tendrá
+        np.savetxt(Ruta_Caps_Clases_SD, capacidad_supply_depots, delimiter=',')
+    else:
+        lista_clases_SD = []
+        with open(Ruta_Caps_Clases_SD, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                lista_clases_SD.append(numbers)
+            lista_clases_SD = np.array(lista_clases_SD)
 
     distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
 
@@ -595,14 +667,20 @@ if __name__ == "__main__":
             solution[0][j] = list(set(solution[0][j]))
         print("Base " + str(j) + "-> SD: " + str(solution[0][j]))
     print("Coste final: " + str(obj_value))
-    #Graficamos la solución
-
     # Graficar el mapa y los puntos
+    fig_1 = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    fig_1.show()
+    #Evolución del coste de una de las rutas
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Coral.history)
+    coste.show()
+    #Graficar solución
     colores = ['green', 'blue', 'red', 'orange', 'purple']  # Lista de colores para cada tipo de recurso
     fig = plt.figure(figsize=(10, 6))
     ejes = fig.add_subplot(111)  # Creamos ejes en la figura (1 fila, 1 columna y 1 cuadrícula) -> Necesarios para dibujar los puntos multicolor
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',
-                label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
     for k in range(numero_supply_depots):
         SD = []
         for j, value in enumerate(solution[0]):  # Obtenemos lista de índices de las bases de la solución que tienen el SD asociado
@@ -615,13 +693,12 @@ if __name__ == "__main__":
                 if value == k:
                     SD.append(j)
         for t in SD:  # Bucle para pintar puntos multicolor
-            clases_recurso = [i for i, v in enumerate(lista_clases_base[t]) if v != 0]  # Sacamos índices de la lista de clases de la base
+            clases_recurso = [i for i, v in enumerate(lista_clases_base[t]) if isinstance(v, str)]  # Sacamos índices de la lista de clases de la base
             lista_colores = [colores[j] for j, x in enumerate(clases_recurso)]  # Obtenemos los colores para cada clase dentro del punto que dibujaremos
             angulo_color = 360 / len(lista_colores)
             for s, color in enumerate(lista_colores):
                 angulo_inicio = s * angulo_color
-                seccion_circulo = patches.Wedge((longitudes_bases[t], latitudes_bases[t]), 2, angulo_inicio,
-                                                angulo_inicio + angulo_color, color=color)
+                seccion_circulo = patches.Wedge((longitudes_bases[t], latitudes_bases[t]), 2, angulo_inicio, angulo_inicio + angulo_color, color=color)
                 ejes.add_patch(seccion_circulo)
         ejes.set_xlim(-5, 185)  # Limitar el eje x de 0 a 180
         ejes.set_ylim(-5, 185)  # Limitar el eje y de 0 a 180

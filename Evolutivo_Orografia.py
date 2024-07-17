@@ -53,14 +53,14 @@ class EvolutiveClass:
         index = np.argsort(coste)
         coste_ordenado = np.sort(coste)
         poblacion_actual = poblacion_inicial[index,:]   #La población tendrá más soluciones que la inicial debido al cruce
-        poblacion_actual = poblacion_actual[0:self.Num_Individuos,:]    #Nos quedamos con los mejores individuos
+        poblacion_actual = poblacion_actual[0:self.Num_Padres,:]    #Nos quedamos con los mejores individuos
         return poblacion_actual, coste_ordenado
 
     def Cruce (self, poblacion, capacidades, Num_Max = None):
         if Num_Max == None:
             Num_Max = self.Num_Max
         #Indice_Seleccionado = []
-        Indices_Validos = list(np.arange(self.Num_Individuos))
+        Indices_Validos = list(np.arange(self.Num_Padres))
 
         for i in range(self.Num_Individuos - self.Num_Padres): #Bucle para generar HIJOS
             Indice_Padres = random.sample(Indices_Validos, 2)
@@ -311,10 +311,10 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
         f"Bases_SD.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
         f"Cap_Bases_SD.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -344,8 +344,10 @@ if __name__ == "__main__":
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     latitudes_bases, longitudes_bases = zip(*bases)
+    latitudes_bases = np.array(latitudes_bases)
     with rasterio.open(mapa_dem) as dem:    #Transformamos a UTM de la zona del mapa para posteriores operaciones
         limites = dem.bounds
+        latitudes_bases = abs(latitudes_bases - dem.height)
         pixel_width = (limites.right - limites.left) / dem.width
         pixel_height = (limites.top - limites.bottom) / dem.height
         transform = from_origin(limites.left, limites.top, pixel_width, pixel_height)
@@ -355,6 +357,8 @@ if __name__ == "__main__":
         bases_UTM.append((lat, lon))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots = np.array(latitudes_supply_depots)
+    latitudes_supply_depots = abs(latitudes_supply_depots - dem.height)
     SD_UTM = []
     for i in range(len(longitudes_supply_depots)):
         lon, lat = transform * (longitudes_supply_depots[i], latitudes_supply_depots[i])
@@ -368,7 +372,7 @@ if __name__ == "__main__":
     with rasterio.open(mapa_dem) as dem:
         dem_data = dem.read(1)  # Leer la primera banda
         distancias_Oro = os.path.join(
-            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
             f"dist_Oro.csv")
         if not os.path.exists(distancias_Oro):
             distancias_3D = Distancia_Base_Supply_Depot_3D(bases_UTM, SD_UTM, dem)
@@ -397,13 +401,15 @@ if __name__ == "__main__":
         ### A CONTINUACIÓN, APLICAMOS EL ALGORITMO DESPUÉS DE OBTENER LOS COSTES Y DISTANCIAS
     
     Ev1 = EvolutiveClass(Num_Individuos, Num_Generaciones, Tam_Individuos,numero_supply_depots, Prob_Padres, Prob_Mutacion, Prob_Cruce)
-    #Ev1.ImprimirInformacion()
+    Costes_Generacion = []
     Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots,)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
     for i in range(Num_Generaciones):
         print(("Generación: " + str(i + 1)))
-        Pob_Actual = Ev1.Cruce(Pob_Inicial, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
-        Fitness = Funcion_Fitness(distancias_3D, Pob_Actual)
-        Pob_Inicial, Costes = Ev1.Seleccion(Pob_Actual,Fitness)
+        Fitness = Funcion_Fitness(distancias_3D, Pob_Inicial)
+        Pob_Actual, Costes = Ev1.Seleccion(Pob_Inicial, Fitness)
+        Pob_Inicial = Ev1.Cruce(Pob_Actual, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
+        print("Coste: " + str(Costes[0]))
+        Costes_Generacion.append(Costes[0])
     Sol_Final = Pob_Inicial[0]   #La primera población será la que tenga menor coste
     Coste_Final = Costes[0]
     print("Solución final:")
@@ -411,8 +417,16 @@ if __name__ == "__main__":
         print("Base " + str(j) + "-> SD: " + str(Sol_Final[j]))
     print("Coste de la solución: " + str(Coste_Final))
 
-
     # Graficar el mapa y los puntos
+    fig_1 = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    fig_1.show()
+    # Evolución del coste de una de las rutas
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Costes_Generacion)
+    coste.show()
+    #Graficamos solución
     dem_data = np.where(dem_data == dem.nodata, np.nan, dem_data)
     plt.figure(figsize=(10, 6))
     plt.imshow(dem_data, cmap='terrain')

@@ -10,6 +10,8 @@ from PyCROSL.CRO_SL import CRO_SL
 import random
 import math
 import matplotlib.pyplot as plt
+import os
+import csv
 
 class EvolutiveClass:
     def __init__(self, Num_Individuos=200, Num_Generaciones=10, Tam_Individuos=1, Num_Max = 10, Prob_Padres=0.5, Prob_Mutacion=0.02, Prob_Cruce=0.5):
@@ -48,14 +50,14 @@ class EvolutiveClass:
         index = np.argsort(coste)
         coste_ordenado = np.sort(coste)
         poblacion_actual = poblacion_inicial[index,:]   #La población tendrá más soluciones que la inicial debido al cruce
-        poblacion_actual = poblacion_actual[0:self.Num_Individuos,:]    #Nos quedamos con los mejores individuos
+        poblacion_actual = poblacion_actual[0:self.Num_Padres,:]    #Nos quedamos con los mejores individuos
         return poblacion_actual, coste_ordenado
 
     def Cruce (self, poblacion, capacidades, Num_Max = None):
         if Num_Max == None:
             Num_Max = self.Num_Max
         #Indice_Seleccionado = []
-        Indices_Validos = list(np.arange(self.Num_Individuos))
+        Indices_Validos = list(np.arange(self.Num_Padres))
 
         for i in range(self.Num_Individuos - self.Num_Padres): #Bucle para generar HIJOS
             Indice_Padres = random.sample(Indices_Validos, 2)
@@ -160,6 +162,11 @@ class EvolutiveClass:
                             indice_base_aleatoria_2 = random.choice(lista_filtrada)  # Elección aleatoria de la base del resto de bases
                         else:
                             SD_mismos_recursos_2 = [v for i, v in enumerate(SD_mismos_recursos) if v != k and v != k_3]
+                            if not SD_mismos_recursos_2:    #Si no hay otro SD -> Liberamos bases del SD que da problemas
+                                e = random.randint(0, 5)
+                                f = indices_bases_SD_ordenados[0:e]
+                                individuo[f] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
+                                continue
                             lista_ind = []
                             while True:  # Cotejamos que haya bases de la misma clase en otros SD
                                 k_4 = random.choice(SD_mismos_recursos_2)  # Jugamos con uno de los SD con mismos recursos que las bases
@@ -172,6 +179,7 @@ class EvolutiveClass:
                                         e = random.randint(0, 5)
                                         f = indices_bases_SD_ordenados[0:e]
                                         individuo[f] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
+                                        continue
                                     else:
                                         continue
                             indice_base_aleatoria_2 = random.choice(indices_resto_bases)
@@ -186,6 +194,11 @@ class EvolutiveClass:
                                 indice_base_aleatoria_2 = random.choice(indices_resto_bases)
                             else:
                                 SD_mismos_recursos_2 = [v for i, v in enumerate(SD_mismos_recursos) if v != k and v != k_3]
+                                if not SD_mismos_recursos_2:  # Si no hay otro SD -> Liberamos bases del SD que da problemas
+                                    e = random.randint(0, 5)
+                                    f = indices_bases_SD_ordenados[0:e]
+                                    individuo[f] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
+                                    continue
                                 lista_ind = []
                                 while True:  # Cotejamos que haya bases de la misma clase en otros SD
                                     k_4 = random.choice(SD_mismos_recursos_2)  # Jugamos con uno de los SD con mismos recursos que las bases
@@ -266,7 +279,7 @@ def Funcion_Fitness(distancias, poblacion):
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 500
+    Num_Generaciones = 100
     Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
@@ -278,32 +291,90 @@ if __name__ == "__main__":
     numero_supply_depots = 15
     capacidad_maxima = 20
     numero_clases = 5
-    puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
+    Ruta_Puntos = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
+        f"Bases_SD.csv")
+    Ruta_Capacidades = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
+        f"Cap_Bases_SD.csv")
+    Ruta_Clases_Bases = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
+        f"Clases_Bases.csv")
+    Ruta_Clases_SD = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
+        f"Clases_SD.csv")
+    if not os.path.exists(Ruta_Puntos):
+        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
+        puntos = np.array(puntos)
+        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
+    else:
+        puntos = []
+        with open(Ruta_Puntos, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                numbers = tuple(numbers)
+                puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
-    capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
+    if not os.path.exists(Ruta_Capacidades):
+        capacidad_bases = np.random.randint(1, capacidad_maxima, size=len(bases))
+        np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
+    else:
+        capacidad_bases = []
+        with open(Ruta_Capacidades, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = float(fila[0])
+                capacidad_bases.append(int(numbers))
+            capacidad_bases = np.array(capacidad_bases)
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
-    lista_clases_base = []
-    for i in range(numero_bases):
-        vector_clase = np.zeros(numero_clases, dtype=int)
-        indice_clase = random.choice([i for i,v in enumerate(vector_clase)])
-        vector_clase[indice_clase] = 1
-        lista_clases_base.append(vector_clase)
+    if not os.path.exists(Ruta_Clases_Bases):
+        lista_clases_base = []
+        for i in range(numero_bases):
+            vector_clase = np.zeros(numero_clases, dtype=int)
+            indice_clase = random.choice([i for i, v in enumerate(vector_clase)])
+            vector_clase[indice_clase] = 1
+            lista_clases_base.append(vector_clase)
+        lista_clases_base = np.array(lista_clases_base)
+        np.savetxt(Ruta_Clases_Bases, lista_clases_base, delimiter=',')
+    else:
+        lista_clases_base = []
+        with open(Ruta_Clases_Bases, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                lista_clases_base.append(numbers)
+            lista_clases_base = np.array(lista_clases_base)
 
-    lista_clases_SD = []
-    indices_SD_validos = list(np.arange(numero_supply_depots))   #Sacamos lista de índices de cada SD
-    indice_seleccionado = []
-    for i in range(numero_supply_depots):
-        indice_SD = random.sample([j for j in indices_SD_validos if j not in indice_seleccionado], 1)
-        indice_seleccionado.extend(indice_SD)
-        vector_clase = np.zeros(numero_clases, dtype=int)
-        indice_clase = indice_SD[0] % numero_clases    #Lo que hacemos es asegurarnos que todos los SD tienen una clase distinta
-        vector_clase[indice_clase] = 1
-        lista_clases_SD.append(vector_clase)
+    if not os.path.exists(Ruta_Clases_SD):
+        lista_clases_SD = []
+        indices_SD_validos = list(np.arange(numero_supply_depots))  # Sacamos lista de índices de cada SD
+        indice_seleccionado = []
+        for i in range(numero_supply_depots):
+            indice_SD = random.sample([j for j in indices_SD_validos if j not in indice_seleccionado], 1)
+            indice_seleccionado.extend(indice_SD)
+            vector_clase = np.zeros(numero_clases, dtype=int)
+            indice_clase = indice_SD[0] % numero_clases  # Lo que hacemos es asegurarnos que todos los SD tienen una clase distinta
+            vector_clase[indice_clase] = 1
+            lista_clases_SD.append(vector_clase)
+        np.savetxt(Ruta_Clases_SD, lista_clases_SD, delimiter=',')
+    else:
+        lista_clases_SD = []
+        with open(Ruta_Clases_SD, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                lista_clases_SD.append(numbers)
+            lista_clases_SD = np.array(lista_clases_SD)
 
     #clases = np.random.randint(0, 2, size=(Tam_Individuos , numero_clases))  #Ponemos a 0 ó a 1 las clases de recursos en cada -> A 1 las que
 
@@ -319,20 +390,32 @@ if __name__ == "__main__":
     ### A CONTINUACIÓN, APLICAMOS EL ALGORITMO DESPUÉS DE OBTENER LOS COSTES Y DISTANCIAS
     
     Ev1 = EvolutiveClass(Num_Individuos, Num_Generaciones, Tam_Individuos,numero_supply_depots, Prob_Padres, Prob_Mutacion, Prob_Cruce)
-    #Ev1.ImprimirInformacion()
+    Costes_Generacion = []
     Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots,)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
     for i in range(Num_Generaciones):
         print(("Generación: " + str(i + 1)))
-        Pob_Actual = Ev1.Cruce(Pob_Inicial, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
-        Fitness = Funcion_Fitness(distancias_euclideas, Pob_Actual)
-        Pob_Inicial, Costes = Ev1.Seleccion(Pob_Actual,Fitness)
+        Fitness = Funcion_Fitness(distancias_euclideas, Pob_Inicial)
+        Pob_Actual, Costes = Ev1.Seleccion(Pob_Inicial, Fitness)
+        Pob_Inicial = Ev1.Cruce(Pob_Actual, capacidad_bases, numero_supply_depots)  # Aplicamos cruce en las soluciones
+        print("Coste: " + str(Costes[0]))
+        Costes_Generacion.append(Costes[0])
     Sol_Final = Pob_Inicial[0]   #La primera población será la que tenga menor coste
     Coste_Final = Costes[0]
     print("Solución final:")
     for j in range(Tam_Individuos):
         print("Base " + str(j) + "-> SD: " + str(Sol_Final[j]))
     print("Coste de la solución: " + str(Coste_Final))
+
     # Graficar el mapa y los puntos
+    fig = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    fig.show()
+    #Evolución del coste de una de las rutas
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Costes_Generacion)
+    coste.show()
+    # Graficar solución
     colores = ['green', 'blue', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'magenta', 'cyan', 'violet','lime', 'gold', 'silver', 'indigo']
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
@@ -341,7 +424,10 @@ if __name__ == "__main__":
         color = colores[k]  # Un color por cada iteración
         for j in range(len(SD)):
             plt.scatter(longitudes_bases[SD[j]], latitudes_bases[SD[j]], color=color, label='Bases')
-        plt.plot([longitudes_bases[SD[0]], longitudes_supply_depots[k]],[latitudes_bases[SD[0]], latitudes_supply_depots[k]], color='red')
+        if len(SD) > 0:
+            plt.plot([longitudes_bases[SD[0]], longitudes_supply_depots[k]],[latitudes_bases[SD[0]], latitudes_supply_depots[k]], color='red')
+        else:
+            continue
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')

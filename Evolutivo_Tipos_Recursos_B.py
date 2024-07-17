@@ -12,6 +12,8 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import copy
+import os
+import csv
 
 class EvolutiveClass:
     def __init__(self, Num_Individuos=200, Num_Generaciones=10, Tam_Individuos=1, Num_Max = 10, Prob_Padres=0.5, Prob_Mutacion=0.02, Prob_Cruce=0.5):
@@ -45,7 +47,7 @@ class EvolutiveClass:
             Asig_Clases_SD = np.full((numero_bases, numero_clases),numero_supply_depots)  # Para cambiar la asignación de la capacidad de un recurso de una base a distintos SD
             Ind_Aux = list(np.random.randint(0, Num_Max, size=Col))  # Son los índices de los SD asignados a cada base
             for k in range(Col):
-                ind_clases = [i for i, v in enumerate(lista_clases_base[k]) if v != 0]
+                ind_clases = [i for i, v in enumerate(lista_clases_base[k]) if isinstance(v, str)]
                 for l in ind_clases:
                     Asig_Clases_SD[k][l] = Ind_Aux[k]
             if(self.Comprobacion_Individuo(Ind_Aux, Asig_Clases_SD, Capacidades)):
@@ -60,16 +62,16 @@ class EvolutiveClass:
         index = list(np.argsort(coste))
         coste_ordenado = np.sort(coste)
         poblacion_actual = [poblacion_inicial[v] for i,v in enumerate(index)]   #La población tendrá más soluciones que la inicial debido al cruce
-        poblacion_actual = poblacion_actual[0:self.Num_Individuos]    #Nos quedamos con los mejores individuos
+        poblacion_actual = poblacion_actual[0:self.Num_Padres]    #Nos quedamos con los mejores individuos
         lista_asig_fin = [lista_asig[v] for i, v in enumerate(index)]  # La población tendrá más soluciones que la inicial debido al cruce
-        lista_asig_fin = lista_asig_fin[0:self.Num_Individuos]  # Nos quedamos con los mejores individuos
+        lista_asig_fin = lista_asig_fin[0:self.Num_Padres]  # Nos quedamos con los mejores individuos
         return poblacion_actual, lista_asig_fin, coste_ordenado
 
     def Cruce (self, poblacion, lista, capacidades, Num_Max = None):
         if Num_Max == None:
             Num_Max = self.Num_Max
         #Indice_Seleccionado = []
-        Indices_Validos = list(np.arange(self.Num_Individuos))
+        Indices_Validos = list(np.arange(self.Num_Padres))
 
         for i in range(self.Num_Individuos - self.Num_Padres): #Bucle para generar HIJOS
             Indice_Padres = random.sample(Indices_Validos, 2)
@@ -130,7 +132,7 @@ class EvolutiveClass:
                     if value == i:
                         indices_bases.append(j)
             for j in range(len(indices_bases)): #Bucle para base asociada a ese SD
-                ind_clases = [k for k,v in enumerate(lista_clases_base[indices_bases[j]]) if v != 0]    #Sacamos qué clases tiene esa base
+                ind_clases = [k for k,v in enumerate(lista_clases_base[indices_bases[j]]) if isinstance(v, str)]    #Sacamos qué clases tiene esa base
                 for k in ind_clases:    #Bucle para cada clase de esa base
                     if asig[indices_bases[j]][k] == i:    #Comprobamos que para esa clase esté asignado el SD correspondiente
                         comprobar_capacidades = capacidades[indices_bases[j]][k]
@@ -187,7 +189,7 @@ class EvolutiveClass:
             for s in range(numero_clases):  # Inicializamos a 0 todas las sumas de capacidades para la comprobación
                 suma_capacidades[SD_ind][s] = 0
             for j in range(len(indices_bases_reparar)):
-                ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_reparar[j]]) if v != 0]  # Sacamos qué clases tiene esa base
+                ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_reparar[j]]) if isinstance(v, str)]  # Sacamos qué clases tiene esa base
                 for k in ind_clases:  # Bucle para cada clase de esa base
                     if asig[indices_bases_reparar[j]][k] == SD_ind:  # Comprobamos que para esa clase esté asignado el SD correspondiente
                         capacidades_sd_i = capacidades[indices_bases_reparar[j]][k]
@@ -279,6 +281,7 @@ class EvolutiveClass:
                                                     elif len(indice_asig) > 1:
                                                         g = random.choice(indice_asig)
                                                         asig[i][g] = k_3
+                                            continue
                                         else:
                                             continue
                                 indice_base_aleatoria_2 = random.choice(lista_filtrada)
@@ -421,7 +424,7 @@ class EvolutiveClass:
                         for s in range(numero_clases):  # Inicializamos a 0 todas las sumas de capacidades para la comprobación
                             suma_capacidades[SD_ind][s] = 0
                         for j in range(len(indices_bases_SD)):
-                            ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_SD[j]]) if v != 0]  # Sacamos qué clases tiene esa base
+                            ind_clases = [k for k, v in enumerate(lista_clases_base[indices_bases_SD[j]]) if isinstance(v, str)]  # Sacamos qué clases tiene esa base
                             for t in ind_clases:  # Bucle para cada clase de esa base
                                 if asig[indices_bases_SD[j]][t] == SD_ind:  # Comprobamos que para esa clase esté asignado el SD correspondiente
                                     capacidades_sd_i = capacidades[indices_bases_SD[j]][t]
@@ -499,7 +502,7 @@ def Funcion_Fitness(distancias, poblacion):
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 50
+    Num_Generaciones = 100
     Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
@@ -511,57 +514,128 @@ if __name__ == "__main__":
     numero_supply_depots = 30
     capacidad_maxima = 20
     numero_clases = 5
-    puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
+    Ruta_Puntos = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Bases_SD.csv")
+    Ruta_Capacidades = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Cap_Bases.csv")
+    Ruta_Clases_Bases = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Clases_Bases.csv")
+    Ruta_Caps_Clases_Bases = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Caps_Clases_Bases.csv")
+    Ruta_Caps_Clases_SD = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
+        f"Caps_Clases_SD.csv")
+    if not os.path.exists(Ruta_Puntos):
+        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
+        puntos = np.array(puntos)
+        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
+    else:
+        puntos = []
+        with open(Ruta_Puntos, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                numbers = tuple(numbers)
+                puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
-    capacidad_bases = list(np.random.randint(1, capacidad_maxima, size=(numero_bases)))
+    if not os.path.exists(Ruta_Capacidades):
+        capacidad_bases = np.random.randint(1, capacidad_maxima, size=len(bases))
+        np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
+    else:
+        capacidad_bases = []
+        with open(Ruta_Capacidades, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = float(fila[0])
+                capacidad_bases.append(int(numbers))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = list(np.full(numero_supply_depots,200))
 
-    lista_clases_base = []
     clases = ['A', 'B', 'C', 'D', 'E']
-    for i in range(numero_bases):
-        while True:
-            vector_clase = list(np.zeros(numero_clases))
-            caps_bases_clases = list(np.zeros(numero_clases, dtype=int))
-            cont = 0
-            for j in range(len(clases)):
-                if random.choice([True, False]):    #Generamos aleatoriamente bases que pidan un conjunto de recursos distintos entre sí
-                    vector_clase[j] = clases[j]
-                    cont += 1
-            if any(isinstance(x,str) for x in vector_clase):    #Si me saca un array a 0's, le obligo a volver a hacerlo hasta que sea diferente
-                break
-        if capacidad_bases[i] < cont:
-            capacidad_bases[i] = cont   #Hacemos esto para que, si la capacidad de la base es tan baja que no da para todas las clases, forzamos a que tenga más
-        if capacidad_bases[i] % cont == 0:  #Quiere decir que la capacidad se reparte de forma equitativa entre las clases
-            for k in range(len(clases)):
-                if vector_clase[k] == 0:
-                    caps_bases_clases[k] = 0
-                else:
-                    caps_bases_clases[k] = int(capacidad_bases[i]/cont)
-        elif capacidad_bases[i] % cont > 0:  #Quiere decir que la capacidad de una clase será 1 unidad mayor
-            indices_clases = [j for j, v in enumerate(vector_clase) if v != 0]  # Sacamos índices donde hay clases
-            ind = random.choice(indices_clases) #Elegimos uno aleatoriamente
-            caps_bases_clases[ind] = int(capacidad_bases[i]/cont) + (capacidad_bases[i] % cont)  #Para esa clase habrá un poco más que para el resto
-            for k in range(len(clases)):
-                if vector_clase[k] == 0:
-                    caps_bases_clases[k] = 0
-                elif k != ind:
-                    caps_bases_clases[k] = int(capacidad_bases[i]/cont)
-        capacidad_bases[i] = tuple(caps_bases_clases)
-        lista_clases_base.append(vector_clase)
+    if not os.path.exists(Ruta_Clases_Bases) or not os.path.exists(Ruta_Caps_Clases_Bases):
+        lista_clases_base = []
+        for i in range(numero_bases):
+            while True:
+                vector_clase = list(np.zeros(numero_clases))
+                caps_bases_clases = list(np.zeros(numero_clases, dtype=int))
+                cont = 0
+                for j in range(len(clases)):
+                    if random.choice([True, False]):  # Generamos aleatoriamente bases que pidan un conjunto de recursos distintos entre sí
+                        vector_clase[j] = clases[j]
+                        cont += 1
+                if any(isinstance(x, str) for x in
+                       vector_clase):  # Si me saca un array a 0's, le obligo a volver a hacerlo hasta que sea diferente
+                    break
+            if capacidad_bases[i] < cont:
+                capacidad_bases[i] = cont  # Hacemos esto para que, si la capacidad de la base es tan baja que no da para todas las clases, forzamos a que tenga más
+            if capacidad_bases[i] % cont == 0:  # Quiere decir que la capacidad se reparte de forma equitativa entre las clases
+                for k in range(len(clases)):
+                    if vector_clase[k] == 0:
+                        caps_bases_clases[k] = 0
+                    else:
+                        caps_bases_clases[k] = int(capacidad_bases[i] / cont)
+            elif capacidad_bases[i] % cont > 0:  # Quiere decir que la capacidad de una clase será 1 unidad mayor
+                indices_clases = [j for j, v in enumerate(vector_clase) if isinstance(v, str)]  # Sacamos índices donde hay clases
+                ind = random.choice(indices_clases)  # Elegimos uno aleatoriamente
+                caps_bases_clases[ind] = int(capacidad_bases[i] / cont) + (capacidad_bases[i] % cont)  # Para esa clase habrá un poco más que para el resto
+                for k in range(len(clases)):
+                    if vector_clase[k] == 0:
+                        caps_bases_clases[k] = 0
+                    elif k != ind:
+                        caps_bases_clases[k] = int(capacidad_bases[i] / cont)
+            capacidad_bases[i] = tuple(caps_bases_clases)
+            lista_clases_base.append(vector_clase)
+        capacidad_bases = np.array(capacidad_bases)
+        np.savetxt(Ruta_Caps_Clases_Bases, capacidad_bases, delimiter=',')
+        with open(Ruta_Clases_Bases, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerows(lista_clases_base)
+    else:
+        lista_clases_base = []
+        capacidad_bases = []
+        with open(Ruta_Clases_Bases, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) if x == '0.0' else x for x in fila]
+                lista_clases_base.append(numbers)
+        with open(Ruta_Caps_Clases_Bases, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                capacidad_bases.append(numbers)
+            capacidad_bases = np.array(capacidad_bases)
 
-    lista_clases_SD = []
-    for i in range(numero_supply_depots):
-        caps_SD_clases = []
-        vector_clase = list(np.zeros(numero_clases, dtype=int))
-        for j in range(len(clases)):    #Todos los SD podrán dar todo tipo de recursos
-            vector_clase[j] = clases[j]
-            caps_SD_clases.append(200/len(clases))
-        lista_clases_SD.append(vector_clase)
-        capacidad_supply_depots[i] = tuple(caps_SD_clases)  #Como un SD tiene un Cap Máxima, cada clase también lo tendrá
+    if not os.path.exists(Ruta_Caps_Clases_SD):
+        lista_clases_SD = []
+        for i in range(numero_supply_depots):
+            caps_SD_clases = []
+            vector_clase = list(np.zeros(numero_clases, dtype=int))
+            for j in range(len(clases)):  # Todos los SD podrán dar todo tipo de recursos
+                vector_clase[j] = clases[j]
+                caps_SD_clases.append(200 / len(clases))
+            lista_clases_SD.append(vector_clase)
+            capacidad_supply_depots[i] = tuple(caps_SD_clases)  # Como un SD tiene un Cap Máxima, cada clase también lo tendrá
+        np.savetxt(Ruta_Caps_Clases_SD, capacidad_supply_depots, delimiter=',')
+    else:
+        lista_clases_SD = []
+        with open(Ruta_Caps_Clases_SD, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                lista_clases_SD.append(numbers)
+            lista_clases_SD = np.array(lista_clases_SD)
 
     #clases = np.random.randint(0, 2, size=(Tam_Individuos , numero_clases))  #Ponemos a 0 ó a 1 las clases de recursos en cada -> A 1 las que
 
@@ -577,14 +651,16 @@ if __name__ == "__main__":
     ### A CONTINUACIÓN, APLICAMOS EL ALGORITMO DESPUÉS DE OBTENER LOS COSTES Y DISTANCIAS
     
     Ev1 = EvolutiveClass(Num_Individuos, Num_Generaciones, Tam_Individuos,numero_supply_depots, Prob_Padres, Prob_Mutacion, Prob_Cruce)
-    #Ev1.ImprimirInformacion()
+    Costes_Generacion = []
     Lista_Asig_Clases_SD = []
     Pob_Inicial, Lista_Asig_Clases_SD = Ev1.PoblacionInicial(capacidad_bases, Lista_Asig_Clases_SD, 100, numero_bases, numero_supply_depots,)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
     for i in range(Num_Generaciones):
         print(("Generación: " + str(i + 1)))
-        Pob_Actual, Lista_Asig_Clases_SD = Ev1.Cruce(Pob_Inicial,Lista_Asig_Clases_SD, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
-        Fitness = Funcion_Fitness(distancias_euclideas, Pob_Actual)
-        Pob_Inicial, Lista_Asig_Clases_SD, Costes = Ev1.Seleccion(Pob_Actual,Lista_Asig_Clases_SD, Fitness)
+        Fitness = Funcion_Fitness(distancias_euclideas, Pob_Inicial)
+        Pob_Actual, Lista_Asig_Clases_SD, Costes = Ev1.Seleccion(Pob_Inicial,Lista_Asig_Clases_SD, Fitness)
+        Pob_Inicial, Lista_Asig_Clases_SD = Ev1.Cruce(Pob_Actual,Lista_Asig_Clases_SD, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
+        print("Coste: " + str(Costes[0]))
+        Costes_Generacion.append(Costes[0])
     Sol_Final = Pob_Inicial[0]   #La primera población será la que tenga menor coste
     Coste_Final = Costes[0]
     print("Solución final:")
@@ -594,6 +670,15 @@ if __name__ == "__main__":
 
 
     # Graficar el mapa y los puntos
+    fig_1 = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    fig_1.show()
+    #Evolución del coste de una de las rutas
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Costes_Generacion)
+    coste.show()
+    #Graficar solución
     colores = ['green', 'blue', 'red', 'orange', 'purple']  #Lista de colores para cada tipo de recurso
     fig = plt.figure(figsize=(10, 6))
     ejes = fig.add_subplot(111) #Creamos ejes en la figura (1 fila, 1 columna y 1 cuadrícula) -> Necesarios para dibujar los puntos multicolor
@@ -610,7 +695,7 @@ if __name__ == "__main__":
                 if value == k:
                     SD.append(j)
         for t in SD:    #Bucle para pintar puntos multicolor
-            clases_recurso = [i for i, v in enumerate(lista_clases_base[t]) if v != 0]  # Sacamos índices de la lista de clases de la base
+            clases_recurso = [i for i, v in enumerate(lista_clases_base[t]) if isinstance(v, str)]  # Sacamos índices de la lista de clases de la base
             lista_colores = [colores[j] for j, x in enumerate(clases_recurso)]  # Obtenemos los colores para cada clase dentro del punto que dibujaremos
             angulo_color = 360/len(lista_colores)
             for s, color in enumerate(lista_colores):

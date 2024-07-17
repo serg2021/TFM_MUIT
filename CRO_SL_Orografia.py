@@ -264,8 +264,8 @@ if __name__ == "__main__":
             capacidad_bases = np.array(capacidad_bases)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    latitudes_bases, longitudes_bases = zip(*bases)
-    latitudes_bases = np.array(latitudes_bases)
+    latitudes_bases_2, longitudes_bases = zip(*bases)
+    latitudes_bases = np.array(latitudes_bases_2)
     with rasterio.open(mapa_dem) as dem:  # Transformamos a UTM de la zona del mapa para posteriores operaciones
         limites = dem.bounds
         latitudes_bases = abs(latitudes_bases - dem.height)
@@ -277,8 +277,8 @@ if __name__ == "__main__":
         lon, lat = transform * (longitudes_bases[i], latitudes_bases[i])
         bases_UTM.append((lat, lon))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
-    latitudes_supply_depots = np.array(latitudes_supply_depots)
+    latitudes_supply_depots_2, longitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots = np.array(latitudes_supply_depots_2)
     latitudes_supply_depots = abs(latitudes_supply_depots - dem.height)
     SD_UTM = []
     for i in range(len(longitudes_supply_depots)):
@@ -343,7 +343,7 @@ if __name__ == "__main__":
         "dyn_method": "success",    #Determina la probabilidad de elegir un substrato para cada coral en la siguiente generación -> Con 'success' usa el ratio de larvas exitosas en cada generación
         "dyn_metric": "best",    #Determina cómo agregar los valores de cada substrato para obtener la medida de cada uno
         "dyn_steps": 10,    #Número de evaluaciones por cada substrato
-        "prob_amp": 0.01    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
+        "prob_amp": 0.001    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
     }
 
     operators = [
@@ -363,8 +363,8 @@ if __name__ == "__main__":
 
     # Graficar el mapa y los puntos
     fig_1 = plt.figure(figsize=(10, 6))
-    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    plt.scatter(longitudes_bases, latitudes_bases_2, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots_2, color='black', marker='p',label='Puntos de Suministro')
     fig_1.show()
     #Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))

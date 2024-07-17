@@ -6,6 +6,8 @@ from PyCROSL.SubstrateInt import *
 import random
 import math
 import matplotlib.pyplot as plt
+import os
+import csv
 
 
 class Fitness(AbsObjectiveFunc):
@@ -65,8 +67,10 @@ def Funcion_Fitness(distancias, individuo):
     fitness = 0
     for j in range(len(individuo)):
         SD = individuo[j]    #Saco el SD asociado a una base de la población
-        if(SD > 9 or SD < 0 or isinstance(SD, float)):   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
-            SD = np.random.randint(0,numero_supply_depots)                                   # Se genera el número a modificar
+        if isinstance(SD, float):
+            SD = int(SD)
+        #if SD > 9 or SD < 0:   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
+         #   SD = np.random.randint(0,numero_supply_depots)                                   # Se genera el número a modificar
         fitness += distancias[SD][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
     fitness = fitness/numero_bases
     return fitness
@@ -127,7 +131,7 @@ def Reparacion_Mayor_Menor (individuo, capacidades): #Sustituimos una base de un
                                 indice_base_aleatoria_2 = np.random.randint(0, numero_bases)
                             else:
                                 break
-                if abs(200 - suma_capacidades[k_2[9]]) < 50 and suma_capacidades[k_2[9]] < 200:
+                if abs(200 - suma_capacidades[k_2[9]]) < 20 and suma_capacidades[k_2[9]] < 200:
                     individuo[indice_base_1], individuo[indice_base_aleatoria_2] = individuo[indice_base_aleatoria_2], individuo[indice_base_1]  # Intercambio posiciones de las bases
                 else:
                     e = random.randint(0, 5)
@@ -158,11 +162,40 @@ if __name__ == "__main__":
     numero_bases = 200
     numero_supply_depots = 10
     capacidad_maxima = 20
-    puntos = list(Puntos_Sin_Repetir(numero_bases+numero_supply_depots))
+    Ruta_Puntos = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        f"Bases_SD.csv")
+    Ruta_Capacidades = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        f"Cap_Bases_SD.csv")
+    if not os.path.exists(Ruta_Puntos):
+        puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
+        puntos = np.array(puntos)
+        np.savetxt(Ruta_Puntos, puntos, delimiter=',')
+    else:
+        puntos = []
+        with open(Ruta_Puntos, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                numbers = tuple(numbers)
+                puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
-    capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
+    if not os.path.exists(Ruta_Capacidades):
+        capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
+        np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
+    else:
+        capacidad_bases = []
+        with open(Ruta_Capacidades, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = float(fila[0])
+                capacidad_bases.append(int(numbers))
+            capacidad_bases = np.array(capacidad_bases)
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
@@ -210,10 +243,22 @@ if __name__ == "__main__":
     solution, obj_value =Coral.optimize()
 
     print("Solución final:")
+    solution = np.array(solution, dtype=int)
     for j in range(numero_bases):
         print("Base " + str(j) + "-> SD: " + str(solution[j]))
     print("Coste final: " + str(obj_value))
-    #Graficamos la solución
+
+    # Graficar el mapa y los puntos
+    fig_1 = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',
+                label='Puntos de Suministro')
+    fig_1.show()
+    # Evolución del coste de una de las rutas
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Coral.history)
+    coste.show()
+    # Graficamos solución
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')

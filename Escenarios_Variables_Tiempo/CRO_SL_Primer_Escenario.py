@@ -217,6 +217,7 @@ def Distancia_Base_Supply_Depot_3D(base,supply, dem):    #Bases y SDs como coord
 
 if __name__ == "__main__":
 
+    Generaciones = 100
     mapa_dem = 'PNOA_MDT05_ETRS89_HU30_0560_LID.tif'
     puntos_interpolado = 25  # Necesarios para calcular la distancia entre puntos en el mapa en 3D
     distGrid = 1
@@ -231,10 +232,10 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
         f"Bases_SD.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
         f"Cap_Bases_SD.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -263,9 +264,11 @@ if __name__ == "__main__":
             capacidad_bases = np.array(capacidad_bases)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    latitudes_bases, longitudes_bases = zip(*bases)
+    latitudes_bases_2, longitudes_bases = zip(*bases)
+    latitudes_bases = np.array(latitudes_bases_2)
     with rasterio.open(mapa_dem) as dem:
         limites = dem.bounds  # Extraemos límites del mapa para hacer la matriz de superficie (Vienen en coordenadas espaciales)
+        latitudes_bases = abs(latitudes_bases - dem.height)
         pixel_width = (limites.right - limites.left) / dem.width
         pixel_height = (limites.top - limites.bottom) / dem.height
         transform = from_origin(limites.left, limites.top, pixel_width, pixel_height)
@@ -274,7 +277,9 @@ if __name__ == "__main__":
         lon, lat = transform * (longitudes_bases[i], latitudes_bases[i])
         bases_UTM.append((lat, lon))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots_2, longitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots = np.array(latitudes_supply_depots_2)
+    latitudes_supply_depots = abs(latitudes_supply_depots - dem.height)
     SD_UTM = []
     for i in range(len(longitudes_supply_depots)):
         lon, lat = transform * (longitudes_supply_depots[i], latitudes_supply_depots[i])
@@ -326,7 +331,7 @@ if __name__ == "__main__":
 
         "stop_cond": "Ngen",   #Condición de parada
         "time_limit": 4000.0,   #Tiempo límite (real, no de CPU) de ejecución
-        "Ngen": 100,  #Número de generaciones
+        "Ngen": Generaciones,  #Número de generaciones
         "Neval": 3e3,   #Número de evaluaciones de la función objetivo
         "fit_target": 50,   #Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 
@@ -356,6 +361,16 @@ if __name__ == "__main__":
         print("Base " + str(j) + "-> SD: " + str(solution[j]))
     print("Coste final: " + str(obj_value))
     # Graficar el mapa y los puntos
+    fig_1 = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases_2, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots_2, color='black', marker='p',
+                label='Puntos de Suministro')
+    fig_1.show()
+    # Evolución del coste de una de las rutas
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Coral.history)
+    coste.show()
+    #Graficamos solución
     dem_data = np.where(dem_data == dem.nodata, np.nan, dem_data)
     plt.figure(figsize=(10, 6))
     plt.imshow(dem_data, cmap='terrain')

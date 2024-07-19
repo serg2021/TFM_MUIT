@@ -272,18 +272,43 @@ def Distancia_Base_Supply_Depot_3D(base,supply, dem):    #Bases y SDs como coord
             # Calculamos distancias entre los segmentos formados entre cada uno de esos puntos y vamos sumándolas
             # La distancia la calcularemos teniendo en cuenta la distancia geodésica, esto es, teniendo en cuenta la curvatura del segmento
 
-                y_puntos, x_puntos = InterpolarPuntos(base[j], supply[i], puntos_interpolado)  # Puntos para segmentos
-                altura_puntos = [GetAltura(y, x, dem) for y, x in zip(y_puntos, x_puntos)]  # Sacamos la altura de los puntos interpolados
-                distancia = 0.0
-                for k in range(len(x_puntos)-1):  #Bucle para hacer el cálculo de distancias
-                    y_aux, x_aux = UTM_Geo(x_puntos[k], y_puntos[k])
-                    y_aux_2, x_aux_2 = UTM_Geo(x_puntos[k+1], y_puntos[k+1])
-                    punto1 = (y_aux, x_aux)
-                    punto2 = (y_aux_2, x_aux_2)
-                    distancia_x = geodesic(punto1, punto2).meters   #Distancia geodésica entre los dos puntos
-                    distancia_y = altura_puntos[k+1] - altura_puntos[k]
-                    distancia_segmento = math.sqrt((distancia_x ** 2) + (distancia_y ** 2))
-                    distancia += distancia_segmento
+                #Antes comprobaremos si la trayectoria de una base al SD intersecta con algún tramo del río
+                if InterseccionRectas(base[j], supply[i], puntos_rio_aux):  #Vienen en coordenadas UTM
+                    contador = 0
+                    distancia = 0.0
+                    distancia_rio_2 = 0.0
+                    for k in range(2):  #Tenemos que calcular 2 distancias -> De la base al muelle y del muelle al SD
+                        if contador == 0:
+                            y_puntos, x_puntos = InterpolarPuntos(base[j], puente_rio_UTM,puntos_interpolado)  # Puntos para segmentos
+                        else:
+                            y_puntos, x_puntos = InterpolarPuntos(supply[i], puente_rio_UTM,puntos_interpolado)  # Puntos para segmentos
+                        altura_puntos = [GetAltura(y, x, dem) for y, x in zip(y_puntos, x_puntos)]  # Sacamos la altura de los puntos interpolados
+                        distancia_rio = 0.0
+                        for k in range(len(x_puntos) - 1):  # Bucle para hacer el cálculo de distancias
+                            y_aux, x_aux = UTM_Geo(x_puntos[k], y_puntos[k])
+                            y_aux_2, x_aux_2 = UTM_Geo(x_puntos[k + 1], y_puntos[k + 1])
+                            punto1 = (y_aux, x_aux)
+                            punto2 = (y_aux_2, x_aux_2)
+                            distancia_x = geodesic(punto1, punto2).meters  # Distancia geodésica entre los dos puntos
+                            distancia_y = altura_puntos[k + 1] - altura_puntos[k]
+                            distancia_segmento = math.sqrt((distancia_x ** 2) + (distancia_y ** 2))
+                            distancia_rio += distancia_segmento
+                        distancia_rio_2 += distancia_rio
+                        contador += 1
+                    distancia += distancia_rio_2
+                else:
+                    y_puntos, x_puntos = InterpolarPuntos(base[j], supply[i], puntos_interpolado)  # Puntos para segmentos
+                    altura_puntos = [GetAltura(y, x, dem) for y, x in zip(y_puntos, x_puntos)]  # Sacamos la altura de los puntos interpolados
+                    distancia = 0.0
+                    for k in range(len(x_puntos)-1):  #Bucle para hacer el cálculo de distancias
+                        y_aux, x_aux = UTM_Geo(x_puntos[k], y_puntos[k])
+                        y_aux_2, x_aux_2 = UTM_Geo(x_puntos[k+1], y_puntos[k+1])
+                        punto1 = (y_aux, x_aux)
+                        punto2 = (y_aux_2, x_aux_2)
+                        distancia_x = geodesic(punto1, punto2).meters   #Distancia geodésica entre los dos puntos
+                        distancia_y = altura_puntos[k+1] - altura_puntos[k]
+                        distancia_segmento = math.sqrt((distancia_x ** 2) + (distancia_y ** 2))
+                        distancia += distancia_segmento
                 dist_aux.append(distancia)
             dist.append(dist_aux)
         return dist
@@ -304,11 +329,33 @@ def Distancia_Base_Supply_Depot_3D(base,supply, dem):    #Bases y SDs como coord
         dist.append(distancia)
         return dist
 
+def InterseccionRectas(base,supply,rio):
+    contador_rio = 0
+    for i in range(len(rio)-1):
+        o1 = OrientacionRectas(base, supply, rio[i])
+        o2 = OrientacionRectas(base, supply, rio[i+1])
+        o3 = OrientacionRectas(rio[i], rio[i+1], base)
+        o4 = OrientacionRectas(rio[i], rio[i+1], supply)
+        if o1 != o2 and o3 != o4:   #Si para una recta las orientaciones son distintas y para la otra también, quiere decir que se intersectan
+            contador_rio += 1
+    if (contador_rio % 2) == 0: #Si número de veces que se cruza con el río es par -> BASE Y SD EN EL MISMO LADO DEL RÍO
+        return False
+    else:                       #Si número de veces que se cruza con el río es impar -> BASE Y SD EN LADOS OPUESTOS DEL RÍO
+        return True
+
+def OrientacionRectas(p1,p2,p3):    #Función para determinar si un punto está de un lado o de otro de una recta
+    orient = (p2[1] - p1[1]) * (p3[0] - p2[0]) - (p2[0] - p1[0]) * (p3[1] - p2[1])
+    if orient == 0: #Si da 0, quiere decir que ese punto es colineal -> No está en un lado ni en otro
+        return 0
+    if orient > 0:  #Si está a un lado
+        return 1
+    if orient < 0:  #Si está al otro
+        return 2
 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 100
+    Num_Generaciones = 10
     Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01
@@ -327,10 +374,10 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
         f"Bases_SD.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
         f"Cap_Bases_SD.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -359,9 +406,11 @@ if __name__ == "__main__":
             capacidad_bases = np.array(capacidad_bases)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    latitudes_bases, longitudes_bases = zip(*bases)
-    with rasterio.open(mapa_dem) as dem:    #Transformamos a UTM de la zona del mapa para posteriores operaciones
+    latitudes_bases_2, longitudes_bases = zip(*bases)
+    latitudes_bases = np.array(latitudes_bases_2)
+    with rasterio.open(mapa_dem) as dem:  # Transformamos a UTM de la zona del mapa para posteriores operaciones
         limites = dem.bounds
+        latitudes_bases = abs(latitudes_bases - dem.height)
         pixel_width = (limites.right - limites.left) / dem.width
         pixel_height = (limites.top - limites.bottom) / dem.height
         transform = from_origin(limites.left, limites.top, pixel_width, pixel_height)
@@ -370,26 +419,28 @@ if __name__ == "__main__":
         lon, lat = transform * (longitudes_bases[i], latitudes_bases[i])
         bases_UTM.append((lat, lon))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots_2, longitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots = np.array(latitudes_supply_depots_2)
+    latitudes_supply_depots = abs(latitudes_supply_depots - dem.height)
     SD_UTM = []
     for i in range(len(longitudes_supply_depots)):
         lon, lat = transform * (longitudes_supply_depots[i], latitudes_supply_depots[i])
         SD_UTM.append((lat, lon))
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
-    puntos_rio = np.array([[1890,3710], [1945,3214], [1808,2406], [2193,1625], [2588,1019], [2864, 744]])
+    puntos_rio = np.array([[1890,3710], [1945,3214], [1808,2406], [2193,1625], [2588,1019], [2864, 744], [3029, 450], [2699,119]])
     long_rio_total = []
     distancias_Rio = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
         f"dist_Rio.csv")
     puntos_rio_aux = np.zeros(puntos_rio.shape)
-    for i in range(puntos_rio.shape[0]):
+    for i in range(puntos_rio.shape[0]):    #Los pasamos a UTM para hacer luego las intersecciones de cada tramo del río con las de bases y SD
         lon, lat = transform * (puntos_rio[i][0], puntos_rio[i][1])
         puntos_rio_aux[i] = [lat, lon]
     if not os.path.exists(distancias_Rio):
         with rasterio.open(mapa_dem) as dem:
             for i in range(puntos_rio.shape[0]-1):
-                long_rio = Distancia_Base_Supply_Depot_2D(puntos_rio_aux[i], puntos_rio_aux[i+1])
+                long_rio = Distancia_Base_Supply_Depot_2D(puntos_rio[i], puntos_rio[i+1])
                 long_rio_total.append(long_rio)
             np.savetxt(distancias_Rio, long_rio_total, delimiter=',')
     else:
@@ -402,30 +453,45 @@ if __name__ == "__main__":
                 long_rio_total.append(numbers)
             long_rio_total = np.array(long_rio_total)
 
-    rand_distancia = np.random.uniform(0,np.sum(long_rio_total))   #Distancia aleatoria en la que estará el punto que actúe como puente
-    rio_acum = np.cumsum(long_rio_total) #Acumulamos las distancias entre cada par de puntos para ver la longitud total en cada tramo
-    indice_tramo = np.searchsorted(rio_acum, rand_distancia)    #Determinamos en qué tramo del río está el punto generado
+    punto_Rio = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
+        f"Muelle_Rio.csv")
+    if not os.path.exists(punto_Rio):
+        with rasterio.open(mapa_dem) as dem:
+            rand_distancia = np.random.uniform(0,np.sum(long_rio_total))   #Distancia aleatoria en la que estará el punto que actúe como puente
+            rio_acum = np.cumsum(long_rio_total)  # Acumulamos las distancias entre cada par de puntos para ver la longitud total en cada tramo
+            indice_tramo = np.searchsorted(rio_acum,rand_distancia)  # Determinamos en qué tramo del río está el punto generado
 
-    if indice_tramo == 0:   #Sacamos la distancia que hay en el tramo seleccionado, donde irá el punto
-        distancia_tramo = rand_distancia
+            if indice_tramo == 0:  # Sacamos la distancia que hay en el tramo seleccionado, donde irá el punto
+                distancia_tramo = rand_distancia
+            else:
+                distancia_tramo = rand_distancia - rio_acum[indice_tramo - 1]
+
+            inicio_tramo = np.array([puntos_rio[indice_tramo][1], puntos_rio[indice_tramo][0]])
+            final_tramo = np.array([puntos_rio[indice_tramo + 1][1], puntos_rio[indice_tramo + 1][0]])
+            vector_tramo = np.array([final_tramo[0] - inicio_tramo[0], final_tramo[1] - inicio_tramo[1]])
+            vector_unitario_tramo = vector_tramo / np.linalg.norm(vector_tramo)  # Sacamos el vector unitario que conforma el tramo del río donde poner el punto
+
+            puente_rio = inicio_tramo + vector_unitario_tramo * distancia_tramo  # Punto del río en el que habrá un puente, un muelle...
+            lon, lat = transform * (puente_rio[0], puente_rio[1])
+            puente_rio_UTM = np.array((lat, lon))
+            np.savetxt(punto_Rio, puente_rio_UTM, delimiter=',')
     else:
-        distancia_tramo = rand_distancia - rio_acum[indice_tramo - 1]
-
-    inicio_tramo = np.array([puntos_rio[indice_tramo][1] , puntos_rio[indice_tramo][0]])
-    final_tramo = np.array([puntos_rio[indice_tramo + 1][1] , puntos_rio[indice_tramo + 1][0]])
-    vector_tramo = np.array([final_tramo[0] - inicio_tramo[0], final_tramo[1] - inicio_tramo[1]])
-    vector_unitario_tramo = vector_tramo/np.linalg.norm(vector_tramo)   #Sacamos el vector unitario que conforma el tramo del río donde poner el punto
-
-    puente_rio_aux = inicio_tramo + vector_unitario_tramo * distancia_tramo #Punto del río en el que habrá un puente, un muelle...
-    #NO FUNCIONA PORQUE ESTOY CONTEMPLANDO LA DISTANCIA EUCLÍDEA Y NO LA DE 3D EN ESTE PASO, POR TANTO NO SE PUEDE SACAR ASÍ
-    #lon, lat = ~transform * (puente_rio_aux[1], puente_rio_aux[0])
-    #puente_rio = [lat, lon]
+        puente_rio_UTM = []
+        with open(punto_Rio, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                puente_rio_UTM.append(numbers[0])
+            puente_rio_UTM = tuple(puente_rio_UTM)
 
     # distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
 
     #Leemos el mapa DEM -> La primera banda, ya que suele tener datos de elevaciones
     with rasterio.open(mapa_dem) as dem:
         dem_data = dem.read(1)  # Leer la primera banda
+        dem_data = np.where(dem_data == dem.nodata, np.nan, dem_data)
         distancias_Oro = os.path.join(
             r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
             f"dist_Tercer.csv")
@@ -456,13 +522,15 @@ if __name__ == "__main__":
         ### A CONTINUACIÓN, APLICAMOS EL ALGORITMO DESPUÉS DE OBTENER LOS COSTES Y DISTANCIAS
     
     Ev1 = EvolutiveClass(Num_Individuos, Num_Generaciones, Tam_Individuos,numero_supply_depots, Prob_Padres, Prob_Mutacion, Prob_Cruce)
-    #Ev1.ImprimirInformacion()
+    Costes_Generacion = []
     Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots,)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
     for i in range(Num_Generaciones):
         print(("Generación: " + str(i + 1)))
-        Pob_Actual = Ev1.Cruce(Pob_Inicial, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
-        Fitness = Funcion_Fitness(distancias_3D, Pob_Actual)
-        Pob_Inicial, Costes = Ev1.Seleccion(Pob_Actual,Fitness)
+        Fitness = Funcion_Fitness(distancias_3D, Pob_Inicial)
+        Pob_Actual, Costes = Ev1.Seleccion(Pob_Inicial, Fitness)
+        Pob_Inicial = Ev1.Cruce(Pob_Actual, capacidad_bases, numero_supply_depots)  # Aplicamos cruce en las soluciones
+        print("Coste: " + str(Costes[0]))
+        Costes_Generacion.append(Costes[0])
     Sol_Final = Pob_Inicial[0]   #La primera población será la que tenga menor coste
     Coste_Final = Costes[0]
     print("Solución final:")
@@ -470,26 +538,40 @@ if __name__ == "__main__":
         print("Base " + str(j) + "-> SD: " + str(Sol_Final[j]))
     print("Coste de la solución: " + str(Coste_Final))
 
-
+    bases_figure = np.transpose(np.array([latitudes_bases, longitudes_bases]))
+    SD_figure = np.transpose(np.array([latitudes_supply_depots, longitudes_supply_depots]))
     # Graficar el mapa y los puntos
-    dem_data = np.where(dem_data == dem.nodata, np.nan, dem_data)
+    fig_1 = plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases_2, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots_2, color='black', marker='p',label='Puntos de Suministro')
+    fig_1.show()
+    # Evolución del coste de una de las rutas
+    coste = plt.figure(figsize=(10, 6))
+    plt.plot(Costes_Generacion)
+    coste.show()
+    # Graficamos solución
     plt.figure(figsize=(10, 6))
     plt.imshow(dem_data, cmap='terrain')
     plt.colorbar(label='Altura (m)')
     plt.scatter(longitudes_bases, latitudes_bases, color='white', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
     #Generamos el río -> Lo hacemos observando el mapa y viendo dónde hay una mayor depresión del terreno
-    plt.plot([puntos_rio[0][1], puntos_rio[1][1]], [puntos_rio[0][0], puntos_rio[1][0]], color='black')
-    plt.plot([puntos_rio[1][1], puntos_rio[2][1]], [puntos_rio[1][0], puntos_rio[2][0]], color='black')
-    plt.plot([puntos_rio[2][1], puntos_rio[3][1]], [puntos_rio[2][0], puntos_rio[3][0]], color='black')
-    plt.plot([puntos_rio[3][1], puntos_rio[4][1]], [puntos_rio[3][0], puntos_rio[4][0]], color='black')
-    plt.plot([puntos_rio[4][1], puntos_rio[5][1]], [puntos_rio[4][0], puntos_rio[5][0]], color='black')
+    for i in range(len(puntos_rio)-1):
+        plt.plot([puntos_rio[i][1], puntos_rio[i+1][1]], [puntos_rio[i][0], puntos_rio[i+1][0]], color='black')
+    #Dibujamos muelle
+    lon, lat = ~transform * (puente_rio_UTM[1], puente_rio_UTM[0])
+    puente_rio = np.array((lat, lon))
+    plt.scatter(puente_rio[1], puente_rio[0],color='black', label='Muelle')
     #Unimos rectas
     for k in range(numero_supply_depots):
         SD = [i for i,v in enumerate(Sol_Final) if v == k]  #Sacamos bases asociadas a un SD
         if len(SD) > 0: # Porque puede haber bases que no tengan asociado el SD de la iteración que toca
             aux = random.choice(SD)  # Base aleatoria
-            plt.plot([longitudes_bases[aux],longitudes_supply_depots[Sol_Final[aux]]], [latitudes_bases[aux], latitudes_supply_depots[Sol_Final[aux]]],color='red')
+            if InterseccionRectas(bases_figure[aux], SD_figure[k], puntos_rio):
+                plt.plot([longitudes_bases[aux],puente_rio[1]], [latitudes_bases[aux], puente_rio[0]],color='red')
+                plt.plot([puente_rio[1],longitudes_supply_depots[Sol_Final[aux]]], [puente_rio[0], latitudes_supply_depots[Sol_Final[aux]]],color='red')
+            else:
+                plt.plot([longitudes_bases[aux],longitudes_supply_depots[Sol_Final[aux]]], [latitudes_bases[aux], latitudes_supply_depots[Sol_Final[aux]]],color='red')
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')

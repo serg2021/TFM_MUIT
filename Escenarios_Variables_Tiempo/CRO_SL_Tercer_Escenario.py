@@ -351,7 +351,7 @@ if __name__ == "__main__":
         SD_UTM.append((lat, lon))
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
-    puntos_rio = np.array([[1890, 3710], [1945, 3214], [1808, 2406], [2193, 1625], [2588, 1019], [2864, 744]])
+    puntos_rio = np.array([[1890, 3710], [1945, 3214], [1808, 2406], [2193, 1625], [2588, 1019], [2864, 744], [3029, 450], [2699,119]])
     long_rio_total = []
     distancias_Rio = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
@@ -485,6 +485,9 @@ if __name__ == "__main__":
     for j in range(numero_bases):
         print("Base " + str(j) + "-> SD: " + str(solution[j]))
     print("Coste final: " + str(obj_value))
+
+    bases_figure = np.transpose(np.array([latitudes_bases, longitudes_bases]))
+    SD_figure = np.transpose(np.array([latitudes_supply_depots, longitudes_supply_depots]))
     # Graficar el mapa y los puntos
     fig_1 = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases_2, color='blue', label='Bases')
@@ -494,16 +497,6 @@ if __name__ == "__main__":
     coste = plt.figure(figsize=(10, 6))
     plt.plot(Coral.history)
     coste.show()
-    #Generamos el río -> Lo hacemos observando el mapa y viendo dónde hay una mayor depresión del terreno
-    plt.plot([puntos_rio[0][1], puntos_rio[1][1]], [puntos_rio[0][0], puntos_rio[1][0]], color='black')
-    plt.plot([puntos_rio[1][1], puntos_rio[2][1]], [puntos_rio[1][0], puntos_rio[2][0]], color='black')
-    plt.plot([puntos_rio[2][1], puntos_rio[3][1]], [puntos_rio[2][0], puntos_rio[3][0]], color='black')
-    plt.plot([puntos_rio[3][1], puntos_rio[4][1]], [puntos_rio[3][0], puntos_rio[4][0]], color='black')
-    plt.plot([puntos_rio[4][1], puntos_rio[5][1]], [puntos_rio[4][0], puntos_rio[5][0]], color='black')
-    #Dibujamos muelle
-    lon, lat = ~transform * (puente_rio_UTM[0], puente_rio_UTM[1])
-    puente_rio = np.array((lat, lon))
-    plt.scatter(puente_rio[0], puente_rio[1],color='black', label='Muelle')
     #Graficamos solución
     dem_data = np.where(dem_data == dem.nodata, np.nan, dem_data)
     plt.figure(figsize=(10, 6))
@@ -511,14 +504,25 @@ if __name__ == "__main__":
     plt.colorbar(label='Altura (m)')
     plt.scatter(longitudes_bases, latitudes_bases, color='white', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    # Generamos el río -> Lo hacemos observando el mapa y viendo dónde hay una mayor depresión del terreno
+    for i in range(len(puntos_rio) - 1):
+        plt.plot([puntos_rio[i][1], puntos_rio[i + 1][1]], [puntos_rio[i][0], puntos_rio[i + 1][0]], color='black')
+    # Dibujamos muelle
+    lon, lat = ~transform * (puente_rio_UTM[1], puente_rio_UTM[0])
+    puente_rio = np.array((lat, lon))
+    plt.scatter(puente_rio[1], puente_rio[0], color='black', label='Muelle')
+    #Unimos rectas
     for k in range(numero_supply_depots):
         SD = [i for i,v in enumerate(solution) if v == k]  #Sacamos bases asociadas a un SD
         if len(SD) > 0: # Porque puede haber bases que no tengan asociado el SD de la iteración que toca
             aux = random.choice(SD)  # Base aleatoria
-            plt.plot([longitudes_bases[aux],longitudes_supply_depots[solution[aux]]], [latitudes_bases[aux], latitudes_supply_depots[solution[aux]]],color='red')
+            if InterseccionRectas(bases_figure[aux], SD_figure[k], puntos_rio):
+                plt.plot([longitudes_bases[aux],puente_rio[1]], [latitudes_bases[aux], puente_rio[0]],color='red')
+                plt.plot([puente_rio[1],longitudes_supply_depots[solution[aux]]], [puente_rio[0], latitudes_supply_depots[solution[aux]]],color='red')
+            else:
+                plt.plot([longitudes_bases[aux], longitudes_supply_depots[solution[aux]]],[latitudes_bases[aux], latitudes_supply_depots[solution[aux]]], color='red')
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')
     plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
     plt.show()
-    #Graficamos la solución

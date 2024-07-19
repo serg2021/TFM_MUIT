@@ -355,7 +355,7 @@ def OrientacionRectas(p1,p2,p3):    #Función para determinar si un punto está 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 10
+    Num_Generaciones = 100
     Tam_Individuos = 200
     Prob_Padres = 0.1
     Prob_Mutacion = 0.01

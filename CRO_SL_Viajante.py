@@ -100,6 +100,7 @@ def Funcion_Fitness_Viajante(distancias, dist, individuo, pob, indices):
         k = j +1
         fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
     fitness += dist[SD][indices[indices_orden[0]]]
+    fitness += dist[SD][indices[indices_orden[len(indices_orden) - 1]]]
     fitness = fitness/len(individuo)
     return fitness
 

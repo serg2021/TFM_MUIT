@@ -307,7 +307,7 @@ if __name__ == "__main__":
     Num_Individuos = 100
     Num_Generaciones = 10
     Tam_Individuos = 200
-    Prob_Padres = 0.1
+    Prob_Padres = 0.5
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
@@ -322,6 +322,9 @@ if __name__ == "__main__":
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
         f"Cap_Bases_SD.csv")
+    Ruta_Solucion = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        f"Solucion.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         puntos = np.array(puntos)
@@ -364,21 +367,16 @@ if __name__ == "__main__":
     #distancias_capacidades_bases = list(zip(*[capacidad_bases[indices_capacidad_bases]], [distancias_euclideas_orden[l] for l in range(0, 200)])) #Ordenamos en una única lista
 
     ### A CONTINUACIÓN, APLICAMOS EL ALGORITMO DESPUÉS DE OBTENER LOS COSTES Y DISTANCIAS
-    
-    Ev1 = EvolutiveClass(Num_Individuos, Num_Generaciones, Tam_Individuos,numero_supply_depots, Prob_Padres, Prob_Mutacion, Prob_Cruce)
-    #Ev1.ImprimirInformacion()
-    Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots,)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
-    for i in range(Num_Generaciones):
-        print(("Generación: " + str(i + 1)))
-        Fitness = Funcion_Fitness(distancias_euclideas, Pob_Inicial)
-        Pob_Actual, Costes = Ev1.Seleccion(Pob_Inicial,Fitness)
-        Pob_Inicial = Ev1.Cruce(Pob_Actual, capacidad_bases, numero_supply_depots)   #Aplicamos cruce en las soluciones
-    Sol_Final = Pob_Inicial[0]   #La primera población será la que tenga menor coste
-    Coste_Final = Costes[0]
-    print("Solución final:")
-    for j in range(Tam_Individuos):
-        print("Base " + str(j) + "-> SD: " + str(Sol_Final[j]))
-    print("Coste de la solución: " + str(Coste_Final))
+
+    Sol_Final = []
+    if os.path.exists(Ruta_Solucion):   #Cargamos la solución
+        with open(Ruta_Solucion, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                Sol_Final.append(numbers[0])
+    Sol_Final = np.array(Sol_Final)
 
     ### AQUÍ COMIENZA EL PROBLEMA DEL VIAJANTE
     Individuos = 100

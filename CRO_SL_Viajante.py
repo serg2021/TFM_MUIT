@@ -290,14 +290,18 @@ if __name__ == "__main__":
         SubstrateInt("DE/best/1", {"F": 0.7, "Cr": 0.8})   #Differential Evolution -> F = Factor de escalado de la ecuación; Cr = Prob. de Recombinación
     ]
 
-    Coral = CRO_SL(objfunc,operators,params)
-    solution_normal, obj_value = Coral.optimize()
-    solution_normal.astype(int)
-
-    print("Solución final:")
-    for j in range(numero_bases):
-        print("Base " + str(j) + "-> SD: " + str(solution_normal[j]))
-    print("Coste final: " + str(obj_value))
+    Ruta_Solucion = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        f"Solucion.csv")
+    solution_normal = []
+    if os.path.exists(Ruta_Solucion):  # Cargamos la solución
+        with open(Ruta_Solucion, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                solution_normal.append(numbers[0])
+    solution_normal = np.array(solution_normal)
 
     ### AQUÍ COMIENZA EL PROBLEMA DEL VIAJANTE
 

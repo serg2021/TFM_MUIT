@@ -296,8 +296,7 @@ if __name__ == "__main__":
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
     if not os.path.exists(Ruta_Intermediarios):
-        ind_intermediarios = np.array(random.sample(range(len(bases)), int(len(
-            bases) * 0.2)))  # Extraigo índices de intermediarios de forma aleatoria
+        ind_intermediarios = np.array(random.sample(range(len(bases)), int(len(bases) * 0.2)))  # Extraigo índices de intermediarios de forma aleatoria
         np.savetxt(Ruta_Intermediarios, ind_intermediarios, delimiter=',')
     else:
         ind_intermediarios = []

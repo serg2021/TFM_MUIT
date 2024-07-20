@@ -227,9 +227,9 @@ def Funcion_Fitness(distancias, poblacion):
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
-    Num_Generaciones = 100
+    Num_Generaciones = 500
     Tam_Individuos = 200
-    Prob_Padres = 0.1
+    Prob_Padres = 0.5
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
@@ -303,6 +303,10 @@ if __name__ == "__main__":
     for j in range(Tam_Individuos):
         print("Base " + str(j) + "-> SD: " + str(Sol_Final[j]))
     print("Coste de la solución: " + str(Coste_Final))
+    Ruta_Solucion = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        f"Solucion.csv")
+    np.savetxt(Ruta_Solucion, Sol_Final, delimiter=',') #Guardamos la solución para el problema del viajante
 
     # Graficar el mapa y los puntos
     fig_1 = plt.figure(figsize=(10, 6))

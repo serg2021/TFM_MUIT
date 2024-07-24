@@ -420,7 +420,7 @@ if __name__ == "__main__":
     Num_Individuos = 100
     Num_Generaciones = 100
     Tam_Individuos = 200
-    Prob_Padres = 0.1
+    Prob_Padres = 0.5
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
@@ -441,7 +441,6 @@ if __name__ == "__main__":
         f"Cap_Bases_SD.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
-        puntos = np.array(puntos)
         np.savetxt(Ruta_Puntos, puntos, delimiter=',')
     else:
         puntos = []
@@ -525,6 +524,10 @@ if __name__ == "__main__":
         print("Base " + str(j) + "-> SD: " + str(Sol_Final[0][j]) + " -> Intermediario: " + str(Sol_Final[1][j]) + " -> Capacidad: " + str(capacidad_bases[j]))
     print("Coste de la solución: " + str(Coste_Final))
 
+    Ruta_Solucion = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Combinacion_Problemas',
+        f"Solucion.csv")
+    np.savetxt(Ruta_Solucion, Sol_Final, delimiter=',') #Guardamos la solución para el Cadena Suministro + TSP
 
     # Graficar el mapa y los puntos
     lista_base_indices = []

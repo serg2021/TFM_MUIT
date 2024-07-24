@@ -483,21 +483,25 @@ def Funcion_Fitness(distancias, poblacion):
 
 def Funcion_Fitness_Viajante(distancias, dist, poblacion, pob, indices):
     lista_fitness = []
-    pob = pob.astype(int)
-    SD = pob[indices[0]]
+    SD = pob[0][indices[0]]
     for i in range(len(poblacion)):    #Aplicamos la función fitness a cada solución
         fitness = 0
         indices_orden = list(np.argsort(poblacion[i])) #Sacamos el orden de los índices para verlos de forma consecutiva
         for j in range(len(indices_orden)-1):
             k = j +1
-            fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
+            if indices[indices_orden[j]] in ind_intermediarios:
+                fitness += distancias[indices_orden[j]][indices_orden[k]]
+                indice_inter = [v for v, value in enumerate(ind_intermediarios) if value == indices[indices_orden[j]]]  #Sacamos el índice del intermediario para buscarlo en la lista de fitness
+                fitness += Lista_Fitness_Intermediario[indice_inter[0]] #Sumamos fitness de bases asociadas al intermediario en la solución
+            else:
+                fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
         fitness += dist[SD][indices[indices_orden[0]]]
         fitness += dist[SD][indices[indices_orden[len(indices_orden)-1]]]   #Sumamos distancia del camino de vuelta
-        fitness = fitness/len(poblacion[0])
+        fitness = fitness/(len(poblacion[0])+1)
         lista_fitness.append(fitness)
     return lista_fitness
 
-def Funcion_Fitness_Viajante_Intermediario(distancias, poblacion, indices):
+def Funcion_Fitness_Viajante_Intermediario(distancias, poblacion):
     lista_fitness = []
     for i in range(len(poblacion)):    #Aplicamos la función fitness a cada solución
         fitness = 0
@@ -527,14 +531,17 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Combinacion_Problemas',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
         f"Bases_SD.csv")
     Ruta_Intermediarios = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Combinacion_Problemas',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
         f"Intermediarios.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Combinacion_Problemas',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
         f"Cap_Bases_SD.csv")
+    Ruta_Solucion = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Combinacion_Problemas',
+        f"Solucion.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         np.savetxt(Ruta_Puntos, puntos, delimiter=',')
@@ -593,23 +600,16 @@ if __name__ == "__main__":
         if v in ind_intermediarios:
             print("Intermediario: " + str(v) + " -> Capacidad: " + str(capacidad_bases[v]))
 
-    Costes_Generacion = []
-    Ev1 = EvolutiveClass(Num_Individuos, Num_Generaciones, Tam_Individuos,numero_supply_depots, Prob_Padres, Prob_Mutacion, Prob_Cruce)
-    Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
-    for i in range(Num_Generaciones):
-        print(("Generación: " + str(i+1)))
-        Fitness = Funcion_Fitness(distancias_euclideas, Pob_Inicial)
-        Pob_Actual, Costes = Ev1.Seleccion(Pob_Inicial, Fitness)
-        Pob_Inicial = Ev1.Cruce(Pob_Actual, capacidad_bases, numero_supply_depots)  # Aplicamos cruce en las soluciones
-        print("Coste: " + str(Costes[0]))
-        Costes_Generacion.append(Costes[0])
-    Sol_Final = Pob_Inicial[0]   #El primer individuo de la población será el que tenga menor coste
-    Coste_Final = Costes[0]
-    print("Solución final:")
-    for j in range(Tam_Individuos):
-        print("Base " + str(j) + "-> SD: " + str(Sol_Final[0][j]) + " -> Intermediario: " + str(Sol_Final[1][j]) + " -> Capacidad: " + str(capacidad_bases[j]))
-    print("Coste de la solución: " + str(Coste_Final))
-
+    Sol_Final = []
+    if os.path.exists(Ruta_Solucion):   #Cargamos la solución
+        with open(Ruta_Solucion, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                Sol_Final.append(numbers)
+            Sol_Final = np.array(Sol_Final, dtype=int)
+    Sol_Final = list(Sol_Final)
 
     lista_base_indices = []
     #Graficar solución
@@ -620,8 +620,6 @@ if __name__ == "__main__":
     bases = puntos[:numero_bases]
     longitudes_bases, latitudes_bases = zip(*bases)
     for v in range(len(ind_intermediarios)):
-        if isinstance(Sol_Final[1], float):
-            Sol_Final[1] = list(np.zeros(numero_bases))
         base_indices = [i for i, x in enumerate(Sol_Final[1]) if x == ind_intermediarios[v]]
         for j in base_indices:
             plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
@@ -646,12 +644,13 @@ if __name__ == "__main__":
     Lista_Rutas_Intermediario = []
     Lista_Fitness_Intermediario = []
     Costes_Viajante = 0.0
-    Costes_Generacion = []
     Num_Inter = len(ind_intermediarios) #Número de intermediarios
     for i in range(Num_Inter):  #Bucle para cada intermediario
         print("Intermediario: " + str(i+1))
         indices_bases_inter = [j for j, value in enumerate(Sol_Final[1]) if value == ind_intermediarios[i]]   #Sacamos índices de las bases asociadas a un intermediario
         if len(indices_bases_inter) == 0:   #No hay bases asociadas a ese intermediario
+            Lista_Rutas_Intermediario.append(0.0)  # Guardamos un valor nulo
+            Lista_Fitness_Intermediario.append(0.0) #Guardamos un valor nulo -> Lo hacemos para no perder el orden de los intermediarios
             continue    #Siguiente iteración
         Tam_Indiv = len(indices_bases_inter)
         Num_Orden = len(indices_bases_inter)
@@ -673,10 +672,9 @@ if __name__ == "__main__":
             Lista_Fitness_Intermediario.append(fitness_1)
             continue
         for j in range(Generaciones):
-            Fitness_Viajante = Funcion_Fitness_Viajante_Intermediario(dist_bases_list_inter, Pob_Init,indices_bases_inter)
+            Fitness_Viajante = Funcion_Fitness_Viajante_Intermediario(dist_bases_list_inter, Pob_Init)
             Pob_Act, Costes_Viajante = Ev2.Seleccion(Pob_Init, Fitness_Viajante)
             Pob_Init = Ev2.Cruce_Viajante(Pob_Act, Num_Orden)
-            Costes_Generacion.append(Costes_Viajante[0])
         print("Coste Solución " + str(i) + ": " + str(Costes_Viajante[0]))
         Array_Indices = np.array(indices_bases_inter)
         Ruta_Orden = np.argsort(Pob_Init[0])  #Ordenamos las bases de menor a mayor
@@ -685,32 +683,32 @@ if __name__ == "__main__":
         Lista_Fitness_Intermediario.append(Costes_Viajante[0])
 
     #AQUÍ COMIENZA EL VIAJANTE NORMAL CONTANDO LOS FITNESS DE LOS INTERMEDIARIOS
-    #Falta el viajante normal -> Ya tenemos los viajantes de los intermediarios, faltaría sumar sus fitness al del normal
-    #Además, hay que mirar a ver cómo hacemos el plot de las rutas teniendo en cuenta las de las bases de los intermediarios
+    #Hay que mirar a ver cómo hacemos el plot de las rutas teniendo en cuenta las de las bases de los intermediarios
     Individuos = 100
     Generaciones = 500
     Lista_Sol_Final = []
     Costes_Viajante = 0.0
     Costes_Generacion = []
-    for i in range(numero_supply_depots):
-        print("SD: " + str(i))
-        indices_bases_SD = [j for j, value in enumerate(Sol_Final) if value == i]   #Sacamos índices de las bases asociadas a un SD
-        Tam_Indiv = len(indices_bases_SD)
-        Num_Orden = len(indices_bases_SD)
-        Ev2 = EvolutiveClass(Individuos, Generaciones, len(indices_bases_SD), len(indices_bases_SD), Prob_Padres, Prob_Mutacion,Prob_Cruce) #Objeto de Evolutivo
+    for k in range(numero_supply_depots):
+        print("SD: " + str(k+1))
+        indices_bases_SD = np.array([j for j, value in enumerate(Sol_Final[0]) if value == k])  #Sacamos índices de las bases asociadas a un SD
+        indices_bases_inter = np.array([j for j, value in enumerate(indices_bases_SD) if Sol_Final[1][value] == numero_bases])  #Sacamos bases e inters directos a un SD
+        Tam_Indiv = len(indices_bases_inter)
+        Num_Orden = len(indices_bases_inter)
+        Ev2 = EvolutiveClass(Individuos, Generaciones, len(indices_bases_inter), len(indices_bases_inter), Prob_Padres, Prob_Mutacion,Prob_Cruce) #Objeto de Evolutivo
         Pob_Init = Ev2.PoblacionInicial_Viajante(Individuos, Tam_Indiv, Num_Orden)
         dist_bases_list_SD = []
-        bases_SD = [bases[v] for v in indices_bases_SD] #Bases asociadas a un SD
-        for x in range(len(indices_bases_SD)):  #Sacamos distancias entre las bases del mismo SD
-            distancia_euclidea_SD = Distancia_Base_Supply_Depot_2D(bases_SD,bases[indices_bases_SD[x]])  # Obtenemos distancias de bases con otra base
+        bases_SD = [bases[v] for v in indices_bases_SD[indices_bases_inter]] #Bases asociadas a un SD
+        for x in range(len(indices_bases_inter)):  #Sacamos distancias entre las bases del mismo SD
+            distancia_euclidea_SD = Distancia_Base_Supply_Depot_2D(bases_SD,bases[indices_bases_SD[indices_bases_inter[x]]])  # Obtenemos distancias de bases con otra base
             dist_bases_list_SD.append(distancia_euclidea_SD)    #Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
         for j in range(Generaciones):
-            Fitness_Viajante = Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, Pob_Init, Sol_Final,indices_bases_SD)
+            Fitness_Viajante = Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, Pob_Init, Sol_Final,indices_bases_SD[indices_bases_inter])
             Pob_Act, Costes_Viajante = Ev2.Seleccion(Pob_Init, Fitness_Viajante)
             Pob_Init = Ev2.Cruce_Viajante(Pob_Act, Num_Orden)
             Costes_Generacion.append(Costes_Viajante[0])
-        print("Coste Solución SD " + str(i) + ": " + str(Costes_Viajante[0]))
-        Lista_Sol_Final.append(Pob_Init[0])
+        print("Coste Solución SD " + str(k+1) + ": " + str(Costes_Viajante[0]))
+        Lista_Sol_Final.append(indices_bases_SD[indices_bases_inter][Pob_Init[0]])  #Guardamos la ruta de la solución
 
     # Graficar el mapa y los puntos
     fig = plt.figure(figsize=(10, 6))
@@ -723,7 +721,7 @@ if __name__ == "__main__":
     coste.show()
     #Graficamos las rutas óptimas
     colores = ['green', 'magenta', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'black', 'cyan']
-    plt.figure(2,figsize=(10, 6))
+    plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
     for v in range(len(Lista_Sol_Final)):

@@ -290,16 +290,17 @@ def Funcion_Fitness(distancias, poblacion):
 
 def Funcion_Fitness_Viajante(distancias, dist, poblacion, pob, indices):
     lista_fitness = []
+    pob = pob.astype(int)
     SD = pob[indices[0]]
     for i in range(len(poblacion)):    #Aplicamos la función fitness a cada solución
         fitness = 0
-        indices_orden = list(np.argsort(poblacion[i]))  #Sacamos el orden de los índices para verlos de forma consecutiva
+        indices_orden = list(np.argsort(poblacion[i]))[::-1]  #Sacamos el orden de los índices para verlos de forma consecutiva
         for j in range(len(indices_orden)-1):
             k = j +1
             fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
         fitness += dist[SD][indices[indices_orden[0]]]
         fitness += dist[SD][indices[indices_orden[len(indices_orden)-1]]]
-        fitness = fitness/len(poblacion[0])
+        fitness = fitness/(len(poblacion[0])+1) #Dividimos entre el número de distancias para normalizar
         lista_fitness.append(fitness)
     return lista_fitness
 
@@ -402,7 +403,7 @@ if __name__ == "__main__":
             Pob_Act, Costes_Viajante = Ev2.Seleccion(Pob_Init, Fitness_Viajante)
             Pob_Init = Ev2.Cruce_Viajante(Pob_Act, Num_Orden)
             Costes_Generacion.append(Costes_Viajante[0])
-        print("Coste Solución " + str(i) + ": " + str(Costes_Viajante[0]))
+        print("Coste Solución SD " + str(i) + ": " + str(Costes_Viajante[0]))
         Lista_Sol_Final.append(Pob_Init[0])
 
     # Graficar el mapa y los puntos

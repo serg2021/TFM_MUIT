@@ -22,9 +22,9 @@ class Fitness(AbsObjectiveFunc):
             return Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, solution, solution_normal, indices_bases_SD)
 
     def random_solution(self):  #Generamos una población inicial -> Solo indicamos cómo serán las soluciones y las reparamos una vez se generen, el resto lo hace el algoritmo
-        Pob_Ini = np.random.randint(0, numero_supply_depots, size=self.size)  # Solución tipo
-        if(Comprobacion_Individuo(Pob_Ini, capacidad_bases)):
-            Pob_Ini = Reparacion_Mayor_Menor(Pob_Ini, capacidad_bases)
+        Pob_Ini = np.random.randint(0, len(indices_bases_SD), size=self.size)  # Solución tipo
+        if(Comprobacion_Individuo_Viajante(Pob_Ini)):
+            Pob_Ini = Reparacion_Viajante(Pob_Ini)
         return Pob_Ini
 
     def repair_solution(self, solution):    #Reparación de individuos

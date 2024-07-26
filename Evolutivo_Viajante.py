@@ -360,14 +360,6 @@ if __name__ == "__main__":
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
     distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
-    #distancias_euclideas_orden = []
-    #for j in indices_capacidad_bases:
-    #    distancias_euclideas_aux = []
-    #    for i in range(0, numero_supply_depots):
-    #        distancias_euclideas_aux.append(distancias_euclideas[i][j])
-    #    distancias_euclideas_orden.append(distancias_euclideas_aux) #Distancias de una base hacia los supply depot ordenadas según su capacidad
-    #distancias_capacidades_bases = list(zip(*[capacidad_bases[indices_capacidad_bases]], [distancias_euclideas_orden[l] for l in range(0, 200)])) #Ordenamos en una única lista
-
     ### A CONTINUACIÓN, APLICAMOS EL ALGORITMO DESPUÉS DE OBTENER LOS COSTES Y DISTANCIAS
 
     Sol_Final = []

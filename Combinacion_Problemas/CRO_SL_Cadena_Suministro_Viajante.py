@@ -15,25 +15,39 @@ class Fitness(AbsObjectiveFunc):
         super().__init__(self.size, opt)
 
     def objective(self, solution):  #Función objetivo -> El algoritmo se encarga de hacerlo, no es como el evolutivo
-        return Funcion_Fitness(distancias_euclideas, solution)
+        if len(solution) == numero_bases:   #Fitness para una solución genérica
+            return Funcion_Fitness(distancias_euclideas, solution)
+        if len(solution) < numero_bases:
+            if len(solution) == len(indices_bases_inter) and flag_1 == True:  #Fitness para viajante en intermediarios
+                solution_normal.astype(int)
+                return Funcion_Fitness_Viajante_Intermediario(dist_bases_list_inter, solution_normal)
+            elif len(solution) == len(indices_bases_inter) and flag_2 == True:   #Fitness para viajante normal
+                solution_normal.astype(int)
+                return Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, solution, solution_normal,indices_bases_SD[indices_bases_inter])
+
 
     def random_solution(self):  #Generamos una población inicial -> Solo indicamos cómo serán las soluciones de la población y las reparamos una vez se generen, el resto lo hace el algoritmo
-        Pob_Ini = np.random.randint(0, numero_supply_depots, size=(1, self.size))  # Solución tipo -> 2 FILAS: 1 solución y otra para lista de bases a inters
-        x = np.full(self.size, 200)
-        Pob_Ini = np.vstack((Pob_Ini, x))
-        if(Comprobacion_Individuo(Pob_Ini, capacidad_bases, distancias_euclideas)):
-            Pob_Ini = Reparacion_Mayor_Menor(Pob_Ini, capacidad_bases, distancias_euclideas)
+        Pob_Ini = np.random.randint(0, len(indices_bases_inter), size=self.size)  # Solución tipo
+        if(Comprobacion_Individuo_Viajante(Pob_Ini)):
+            Pob_Ini = Reparacion_Viajante(Pob_Ini)
         return Pob_Ini
 
     def repair_solution(self, solution):    #Reparación de individuos
-        for i in range(numero_bases):
-            if solution[0][i] > 9 or solution[0][i] < 0:
-                solution[0][i] = np.random.randint(0, numero_supply_depots)
-        if (Comprobacion_Individuo(solution, capacidad_bases, distancias_euclideas)):
-            solution = Reparacion_Mayor_Menor(solution, capacidad_bases, distancias_euclideas)
-            #Lo hemos reparado en base a la capacidad -> PERO NO EN BASE A LOS SD POSIBLES -> SALEN VALORES DE SD QUE NO SON
-            #Tenemos que añadir AQUÍ una forma de repararlo -> Lo más sencillo es hacer un bucle que recorra cada elemento de la solución y
-            #Cambiar esos valores por otros aleatorios que estén dentro del rango
+        if len(solution) == numero_bases:
+            for i in range(numero_bases):
+                if solution[i] > numero_supply_depots-1 or solution[i] < 0:
+                    solution[i] = np.random.randint(0, numero_supply_depots)
+            if (Comprobacion_Individuo(solution, capacidad_bases, distancias_euclideas)):
+                solution = Reparacion_Mayor_Menor(solution, capacidad_bases, distancias_euclideas)
+                #Lo hemos reparado en base a la capacidad -> PERO NO EN BASE A LOS SD POSIBLES -> SALEN VALORES DE SD QUE NO SON
+                #Tenemos que añadir AQUÍ una forma de repararlo -> Lo más sencillo es hacer un bucle que recorra cada elemento de la solución y
+                #Cambiar esos valores por otros aleatorios que estén dentro del rango
+        elif len(solution) < numero_bases:
+            for i in range(len(solution)):  #Reparamos la mutación si usa valores que excedan el límite de tamaño del coral
+                if solution[i] > len(solution)-1 or solution[i] < 0:
+                    solution[i] = np.random.randint(0, len(solution))
+            if (Comprobacion_Individuo_Viajante(solution)):
+                solution = Reparacion_Viajante(solution)
         return solution
 
 def Puntos_Sin_Repetir(num_points, offset=0.5):
@@ -49,7 +63,7 @@ def Puntos_Sin_Repetir(num_points, offset=0.5):
     return points
 
 def Distancia_Base_Supply_Depot_2D(base, supply):
-    if isinstance(base, list) and isinstance(supply, list): #Cálculo de todas las distancias de bases e inters a SDs
+    if isinstance(base, list) and isinstance(supply, list):  # Cálculo de todas las distancias de bases e inters a SDs
         x_supply, y_supply = zip(*supply)
         x_base, y_base = zip(*base)
         dist = []
@@ -59,7 +73,14 @@ def Distancia_Base_Supply_Depot_2D(base, supply):
                 distancia = math.sqrt((x_base[j] - x_supply[i]) ** 2 + (y_base[j] - y_supply[i]) ** 2)
                 dist_aux.append(distancia)
             dist.append(dist_aux)
-    else:   #Cálculo de distancia de una base al inter
+    elif isinstance(base, list) and isinstance(supply, tuple):  # Cálculo de todas las distancias de bases a otra base
+        x_supply, y_supply = supply
+        x_base, y_base = zip(*base)
+        dist = []
+        for j in range(len(base)):
+            distancia = math.sqrt((x_base[j] - x_supply) ** 2 + (y_base[j] - y_supply) ** 2)
+            dist.append(distancia)
+    else:  # Cálculo de distancia de una base al inter
         x_supply, y_supply = supply
         x_base, y_base = base
         dist = math.sqrt((x_base - x_supply) ** 2 + (y_base - y_supply) ** 2)
@@ -80,6 +101,49 @@ def Funcion_Fitness(distancias, individuo):
         fitness += distancias[SD_base][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
     fitness = fitness/numero_bases
     return fitness
+
+def Funcion_Fitness_Viajante(distancias, dist, individuo, pob, indices):
+    SD = pob[0][indices[0]]
+    fitness = 0
+    indices_orden = list(np.argsort(individuo)) #Sacamos el orden de los índices para verlos de forma consecutiva
+    for j in range(len(indices_orden)-1):
+        k = j +1
+        fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
+    fitness += dist[SD][indices[indices_orden[0]]]
+    fitness += dist[SD][indices[indices_orden[len(indices_orden)-1]]]   #Sumamos distancia del camino de vuelta
+    fitness = fitness/(len(individuo)+1)
+    return fitness
+
+def Funcion_Fitness_Viajante_Intermediario(distancias, individuo):
+    fitness = 0
+    indices_orden = list(np.argsort(individuo))  #Sacamos el orden de los índices para verlos de forma consecutiva
+    for j in range(len(indices_orden)-1):
+        k = j+1
+        fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
+    fitness += distancias[indices_orden[0]][len(indices_orden)]         #Sumamos distancia desde inter hasta base
+    fitness = fitness/(len(individuo)+1)# -> Aquí normalizaríamos, pero perderíamos información de distancias totales en los intermediarios para la solución general
+    return fitness
+
+def Comprobacion_Individuo_Viajante (individuo):
+    set_individuo = set(individuo)  #Lo pasamos a set, ya que en un set no hya elementos duplicados
+    if len(individuo) != len(set_individuo):    #Comprobamos longitudes -> Si son distintas, quiere decir que había duplicados
+        return True
+def Reparacion_Viajante(individuo):   #Lo que haremos será asegurarnos de que no se repiten números en toda la lista
+    valores_posibles = set([i for i, v in enumerate(individuo)])
+    valores_sin_repetir = set(individuo)
+    valores_validos = valores_posibles - valores_sin_repetir
+    for i in range(len(individuo)-1):
+        if len(valores_validos) == 0:
+            break
+        for j in range(i+1,len(individuo)):
+            if individuo[i] == individuo[j]:
+                indices = [i, j]
+                indice_reparado = random.choice(indices)    #Elegimos uno de los índices a reparar aleatoriamente
+                individuo[indice_reparado] = random.choice(list(valores_validos))   #Elegimos un valor aleatorio de los posibles
+                valores_validos.remove(individuo[indice_reparado]) #Eliminamos el nuevo valor de los valores válidos
+            if len(valores_validos) == 0:
+                break
+    return individuo
 
 def Comprobacion_Individuo (individuo, capacidades, distancias):
     suma_comprobar = list(np.zeros(numero_supply_depots))
@@ -269,7 +333,7 @@ if __name__ == "__main__":
     poblacion_inicial = 100
     numero_bases = 200
     numero_supply_depots = 10
-    capacidad_maxima = 15
+    capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
         f"Bases_SD.csv")
@@ -279,9 +343,11 @@ if __name__ == "__main__":
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
         f"Cap_Bases_SD.csv")
+    Ruta_Solucion = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Combinacion_Problemas',
+        f"Solucion.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
-        puntos = np.array(puntos)
         np.savetxt(Ruta_Puntos, puntos, delimiter=',')
     else:
         puntos = []
@@ -326,8 +392,6 @@ if __name__ == "__main__":
                 capacidad_bases.append(int(numbers))
             capacidad_bases = np.array(capacidad_bases)
     capacidad_bases = list(capacidad_bases)
-    #capacidad_inters = np.random.randint(10, capacidad_maxima, size=(len(intermediarios)))  #Les doy capacidades
-    #capacidad_bases = np.concatenate((capacidad_bases, capacidad_inters))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     bases_inter = puntos[:numero_bases] #Recuperamos datos de bases e intermediarios
     longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
@@ -337,7 +401,6 @@ if __name__ == "__main__":
 
     ## Hasta aquí generamos las bases y SD que vamos a tener antes del algoritmo -> Junto con las distancias asociadas
 
-    objfunc = Fitness(numero_bases)  #Función objetivo para un tamaño de vector igual al número de bases
     params = {                      #Hiperparámetros del algoritmo
         "popSize": poblacion_inicial, #Población inicial
         "rho": 0.6, #Porcentaje de ocupación de corales del Reef inicial
@@ -350,7 +413,7 @@ if __name__ == "__main__":
 
         "stop_cond": "Ngen",   #Condición de parada
         "time_limit": 4000.0,   #Tiempo límite (real, no de CPU) de ejecución
-        "Ngen": 100,  #Número de generaciones
+        "Ngen": 500,  #Número de generaciones
         "Neval": 5100,   #Número de evaluaciones de la función objetivo
         "fit_target": 50,   #Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 
@@ -372,16 +435,104 @@ if __name__ == "__main__":
         SubstrateInt("DE/best/1", {"F": 0.7, "Cr": 0.8})   #Differential Evolution -> F = Factor de escalado de la ecuación; Cr = Prob. de Recombinación
     ]
 
-    Coral = CRO_SL(objfunc,operators,params)
-    solution, obj_value =Coral.optimize()
+    for v in range(numero_bases):
+        if v in ind_intermediarios:
+            print("Intermediario: " + str(v) + " -> Capacidad: " + str(capacidad_bases[v]))
 
-    print("Solución final:")
-    for j in range(numero_bases):
-        print("Base " + str(j) + "-> SD: " + str(solution[0][j]) + " -> Intermediario: " + str(solution[1][j]) + " -> Capacidad: " + str(capacidad_bases[j]))
-    print("Coste final: " + str(obj_value))
+    solution_normal = []
+    if os.path.exists(Ruta_Solucion):  # Cargamos la solución
+        with open(Ruta_Solucion, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for fila in csv_reader:
+                # Convertir cada elemento de la fila a un número (float o int según sea necesario)
+                numbers = [float(x) for x in fila]
+                solution_normal.append(numbers)
+        solution_normal = np.array(solution_normal, dtype=int)
+    solution_normal = list(solution_normal)
+
+    lista_base_indices = []
+    plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
+    plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    bases = puntos[:numero_bases]
+    longitudes_bases, latitudes_bases = zip(*bases)
+    for v in range(len(ind_intermediarios)):
+        if isinstance(solution_normal[1], float):
+            solution_normal[1] = list(np.zeros(numero_bases))
+        base_indices = [i for i, x in enumerate(solution_normal[1]) if x == ind_intermediarios[v]]
+        for j in base_indices:
+            plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
+        lista_base_indices.extend(base_indices)
+    for k in range(numero_supply_depots):
+        SD = [i for i, v in enumerate(solution_normal[0]) if v == k]  # Sacamos bases asociadas a un SD
+        if len(SD) > 0:
+            for l in range(len(SD)):
+                if SD[l] in ind_intermediarios:
+                    plt.plot([longitudes_bases[SD[l]], longitudes_supply_depots[solution_normal[0][SD[l]]]],
+                             [latitudes_bases[SD[l]], latitudes_supply_depots[solution_normal[0][SD[l]]]], color='red')
+    plt.xlabel('Longitud')
+    plt.ylabel('Latitud')
+    plt.title('Mapa con Puntos Aleatorios')
+    plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    plt.show()
+
+    #Aqúi comienza el viajante para intermediarios
+
+    Lista_Rutas_Intermediario = []
+    Lista_Fitness_Intermediario = []
+    Num_Inter = len(ind_intermediarios)  # Número de intermediarios
+    for i in range(Num_Inter):  #Bucle para cada intermediario
+        print("Intermediario: " + str(i+1))
+        indices_bases_inter = [j for j, value in enumerate(solution_normal[1]) if value == ind_intermediarios[i]]   #Sacamos índices de las bases asociadas a un intermediario
+        if len(indices_bases_inter) == 0:   #No hay bases asociadas a ese intermediario
+            Lista_Rutas_Intermediario.append(0.0)  # Guardamos un valor nulo
+            Lista_Fitness_Intermediario.append(0.0) #Guardamos un valor nulo -> Lo hacemos para no perder el orden de los intermediarios
+            continue    #Siguiente iteración
+        dist_bases_list_inter = []
+        dist_bases_inter = [bases[v] for v in indices_bases_inter]  # Bases asociadas a un intermediario
+        dist_bases_inter.append(bases[ind_intermediarios[i]])  # Añadimos también el propio intermediario
+        for x in range(len(indices_bases_inter)):  # Sacamos distancias entre las bases del mismo SD
+            distancia_euclidea_inter = Distancia_Base_Supply_Depot_2D(dist_bases_inter, bases[indices_bases_inter[x]])  # Obtenemos distancias de bases con otra base
+            dist_bases_list_inter.append(distancia_euclidea_inter)  # Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
+        if len(indices_bases_inter) == 1: #Una base asociada a ese intermediario
+            fitness_1 = 0.0
+            fitness_1 += 2.0 * dist_bases_list_inter[0][len(dist_bases_list_inter)]
+            Array_Indices = np.array(indices_bases_inter)
+            Ruta_Inter = Array_Indices[0]   #Sacamos la base asociada y la guardamos
+            Lista_Rutas_Intermediario.append(Ruta_Inter)  # Guardamos la ruta de ese intermediario
+            Lista_Fitness_Intermediario.append(fitness_1)
+            continue
+        flag_1 = True
+        objfunc_Viajante = Fitness(len(indices_bases_inter))
+        Coral_Inter = CRO_SL(objfunc_Viajante, operators, params)
+        solution_Inter, Costes_Inter = Coral_Inter.optimize()
+        flag_1 = False  #Usamos flags para saber cuándo entra en un viajante o en otro del CRO SL
+        print("Coste Solución " + str(i) + ": " + str(Costes_Inter))
+        Array_Indices = np.array(indices_bases_inter)
+        Ruta_Inter = Array_Indices[solution_Inter]
+        Lista_Rutas_Intermediario.append(Ruta_Inter)    #Guardamos la ruta de ese intermediario
+        Lista_Fitness_Intermediario.append(Costes_Inter)
+
+    #Aquí comienza el viajante normal
+    Lista_Sol_Final = []
+    for k in range(numero_supply_depots):
+        print("SD: " + str(k + 1))
+        indices_bases_SD = np.array([j for j, value in enumerate(solution_normal[0]) if value == k])  # Sacamos índices de las bases asociadas a un SD
+        indices_bases_inter = np.array([j for j, value in enumerate(indices_bases_SD) if solution_normal[1][value] == numero_bases])  # Sacamos bases e inters directos a un SD
+        dist_bases_list_SD = []
+        bases_SD = [bases[v] for v in indices_bases_SD[indices_bases_inter]]  # Bases asociadas a un SD
+        for x in range(len(indices_bases_inter)):  # Sacamos distancias entre las bases del mismo SD
+            distancia_euclidea_SD = Distancia_Base_Supply_Depot_2D(bases_SD, bases[indices_bases_SD[indices_bases_inter[x]]])  # Obtenemos distancias de bases con otra base
+            dist_bases_list_SD.append(distancia_euclidea_SD)  # Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
+        flag_2 = True
+        objfunc = Fitness(len(indices_bases_inter))  # Función objetivo para un tamaño de vector igual al número de bases e inters asociados a un SD
+        Coral = CRO_SL(objfunc,operators,params)
+        solution, Costes_Viajante = Coral.optimize()
+        flag_2 = False
+        Lista_Sol_Final.append(indices_bases_SD[indices_bases_inter][solution])  # Guardamos la ruta de la solución
 
     #Graficamos la solución
-    lista_base_indices = []
     fig = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
@@ -392,26 +543,84 @@ if __name__ == "__main__":
     plt.plot(Coral.history)
     coste.show()
     #Graficar solución
+    colores = ['green', 'magenta', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'black', 'cyan']
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
-    bases = puntos[:numero_bases]
-    longitudes_bases, latitudes_bases = zip(*bases)
-    for v in range(len(ind_intermediarios)):
-        if isinstance(solution[1], float):
-            solution[1] = list(np.zeros(numero_bases))
-        base_indices = [i for i, x in enumerate(solution[1]) if x == ind_intermediarios[v]]
-        for j in base_indices:
-            plt.plot([longitudes_bases[j], longitudes_inter[v]],[latitudes_bases[j], latitudes_inter[v]], color='yellow')
-        lista_base_indices.extend(base_indices)
-    for k in range(numero_supply_depots):
-        SD = [i for i, v in enumerate(solution[0]) if v == k]  # Sacamos bases asociadas a un SD
-        if len(SD) > 0:
-            for l in range(len(SD)):
-                if SD[l] in ind_intermediarios:
-                    plt.plot([longitudes_bases[SD[l]], longitudes_supply_depots[solution[0][SD[l]]]],
-                             [latitudes_bases[SD[l]], latitudes_supply_depots[solution[0][SD[l]]]], color='red')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',
+                label='Puntos de Suministro')
+    for v in range(len(Lista_Sol_Final)):
+        color = colores[v % len(colores)]  # Un color por cada iteración
+        plt.plot([longitudes_bases[Lista_Sol_Final[v][0]], longitudes_supply_depots[v]],
+                 [latitudes_bases[Lista_Sol_Final[v][0]], latitudes_supply_depots[v]], color=color)
+        for k in range(0, len(Lista_Sol_Final[v]) - 1):  # Bucle que recorre los valores
+            if Lista_Sol_Final[v][k] in ind_intermediarios and Lista_Sol_Final[v][k + 1] in ind_intermediarios:  # Si los siguientes son intermediarios
+                indice_lista_rutas_1, indice_lista_rutas_2 = np.where(ind_intermediarios == Lista_Sol_Final[v][k])[0],np.where(ind_intermediarios == Lista_Sol_Final[v][k + 1])[0]  # Buscamos el índice del intermediario
+                plt.plot([longitudes_inter[indice_lista_rutas_1[0]], longitudes_inter[indice_lista_rutas_2[0]]],
+                         [latitudes_inter[indice_lista_rutas_1[0]], latitudes_inter[indice_lista_rutas_2[0]]],color=color)
+                if not isinstance(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]], float):  # Tiene bases asociadas
+                    if len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) == 1:  # Sólo una base asociada
+                        plt.plot([longitudes_inter[indice_lista_rutas_1[0]],
+                                  longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][0]]],
+                                 [latitudes_inter[indice_lista_rutas_1[0]],
+                                  latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][0]]], color=color)
+                    else:  # Varias bases asociadas
+                        plt.plot([longitudes_inter[indice_lista_rutas_1[0]],
+                                  longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][0]]],
+                                 [latitudes_inter[indice_lista_rutas_1[0]],
+                                  latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][0]]], color=color)
+                        for l in range(len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) - 1):
+                            plt.plot([longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l]],
+                                      longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l + 1]]],
+                                     [latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l]],
+                                      latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l + 1]]],
+                                     color=color)
+                        plt.plot([longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][
+                            len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) - 1]],
+                                  longitudes_bases[Lista_Sol_Final[v][k + 1]]],
+                                 [latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][
+                                     len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) - 1]],
+                                  latitudes_bases[Lista_Sol_Final[v][k + 1]]], color=color)
+            elif Lista_Sol_Final[v][k] in ind_intermediarios:  # Si el primero es intermediario y el siguiente no lo es
+                indice_lista_rutas_1 = np.where(ind_intermediarios == Lista_Sol_Final[v][k])[
+                    0]  # Buscamos el índice del intermediario
+                if not isinstance(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]], float):  # Tiene bases asociadas
+                    if len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) == 1:  # Sólo una base asociada
+                        plt.plot([longitudes_inter[indice_lista_rutas_1[0]],
+                                  longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][0]]],
+                                 [latitudes_inter[indice_lista_rutas_1[0]],
+                                  latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][0]]], color=color)
+                    else:  # Varias bases asociadas
+                        plt.plot([longitudes_inter[indice_lista_rutas_1[0]],
+                                  longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][0]]],
+                                 [latitudes_inter[indice_lista_rutas_1[0]],
+                                  latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][0]]], color=color)
+                        for l in range(len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) - 1):
+                            plt.plot([longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l]],
+                                      longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l + 1]]],
+                                     [latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l]],
+                                      latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l + 1]]],
+                                     color=color)
+                        plt.plot([longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][
+                            len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) - 1]],
+                                  longitudes_inter[indice_lista_rutas_1[0]]],
+                                 [latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][
+                                     len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) - 1]],
+                                  latitudes_inter[indice_lista_rutas_1[0]]], color=color)
+                plt.plot([longitudes_inter[indice_lista_rutas_1[0]], longitudes_bases[Lista_Sol_Final[v][k + 1]]],
+                         [latitudes_inter[indice_lista_rutas_1[0]], latitudes_bases[Lista_Sol_Final[v][k + 1]]],
+                         color=color)
+            else:  # Si no es intermediario
+                if Lista_Sol_Final[v][k + 1] in ind_intermediarios:  # Si el siguiente es intermediario
+                    indice_lista_rutas_2 = np.where(ind_intermediarios == Lista_Sol_Final[v][k + 1])[
+                        0]  # Buscamos el índice del intermediario
+                    plt.plot([longitudes_bases[Lista_Sol_Final[v][k]], longitudes_inter[indice_lista_rutas_2[0]]],
+                             [latitudes_bases[Lista_Sol_Final[v][k]], latitudes_inter[indice_lista_rutas_2[0]]],
+                             color=color)
+                elif Lista_Sol_Final[v][k + 1] not in ind_intermediarios:  # Si el siguiente es base
+                    plt.plot([longitudes_bases[Lista_Sol_Final[v][k]], longitudes_bases[Lista_Sol_Final[v][k + 1]]],
+                             [latitudes_bases[Lista_Sol_Final[v][k]], latitudes_bases[Lista_Sol_Final[v][k + 1]]],
+                             color=color)
     plt.xlabel('Longitud')
     plt.ylabel('Latitud')
     plt.title('Mapa con Puntos Aleatorios')

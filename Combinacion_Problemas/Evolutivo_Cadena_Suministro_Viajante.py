@@ -137,8 +137,6 @@ class EvolutiveClass:
 
         for i in range(self.Num_Individuos - self.Num_Padres): #Bucle para generar HIJOS
             Indice_Padres = random.sample(Indices_Validos, 2)
-            #Indice_Padres = random.sample([j for j in Indices_Validos if j not in Indice_Seleccionado], 2)            # Se elige aleatoriamente el indice de los padres
-            #Indice_Seleccionado.extend(Indice_Padres)   #Guardamos los índices elegidos para que no los vuelva a repetir en la siguiente iteración
             Padre1 = poblacion[Indice_Padres[0],:]                              # Se coge el padre 1
             Padre2 = poblacion[Indice_Padres[1],:]                              # Se coge el padre 2
             Hijo = np.copy(Padre1)                                              # El hijo va a ser una copia del padre 1
@@ -146,15 +144,15 @@ class EvolutiveClass:
             Hijo[np.where(vector==1)[0]] = Padre2[np.where(vector==1)[0]]       # Los genes seleccionados del padre 2 pasan al hijo
             if np.random.rand() < self.Prob_Mutacion:                           # Se comprueba si el hijo va a mutar
                 Hijo = self.Mutacion_Viajante(Hijo, Num_Max)
+                Hijo = dos_opt(Hijo)    #Aplicamos Local Search
             if(self.Comprobacion_Individuo_Viajante(Hijo)):                    # Se comprueba si hay que reparar el hijo
                  Hijo = self.Reparacion_Viajante(Hijo)
             poblacion = np.insert(poblacion,self.Num_Padres+i,Hijo, axis = 0)   # Se añade a la población una vez que ha mutado y se ha reparado
         return poblacion
 
     def Mutacion_Viajante (self, individuo, Num_Max=None):
-        aux1 = random.sample(list(np.arange(Num_Max)),np.random.randint(Num_Max/2))                        # Se genera número aleatorio para ver la posición que muta
-        aux2 = random.sample(list(np.arange(Num_Max)),len(aux1))                                   # Se genera el número a modificar
-        individuo[aux1] = aux2
+        aux = random.sample(list(np.arange(Num_Max)),2)                        # Se generan 2 números aleatorios para ver las posiciones que mutan
+        individuo[aux[0]], individuo[aux[1]] = individuo[aux[1]], individuo[aux[0]]     #Intercambiamos posiciones
         return individuo
     def Mutacion (self, individuo, Num_Max=None):                                
         aux1 = np.random.randint(0, individuo[0].shape[0])                         # Se genera número aleatorio para ver la posición que muta
@@ -500,7 +498,7 @@ def Funcion_Fitness_Viajante(distancias, dist, poblacion, pob, indices):
                 fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
         fitness += dist[SD][indices[indices_orden[0]]]
         fitness += dist[SD][indices[indices_orden[len(indices_orden)-1]]]   #Sumamos distancia del camino de vuelta
-        fitness = fitness/(len(poblacion[0])+1)
+        #fitness = fitness/(len(poblacion[0])+1)
         lista_fitness.append(fitness)
     return lista_fitness
 
@@ -513,9 +511,23 @@ def Funcion_Fitness_Viajante_Intermediario(distancias, poblacion):
             k = j+1
             fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
         fitness += distancias[indices_orden[0]][len(indices_orden)]         #Sumamos distancia desde inter hasta base
-        fitness = fitness/(len(poblacion[0])+1)# -> Aquí normalizaríamos, pero perderíamos información de distancias totales en los intermediarios para la solución general
+        fitness += distancias[indices_orden[len(indices_orden)-1]][len(indices_orden)]  #Sumamos distancia de vuelta al inter
+        #fitness = fitness/(len(poblacion[0])+1)# -> Aquí normalizaríamos, pero perderíamos información de distancias totales en los intermediarios para la solución general
         lista_fitness.append(fitness)
     return lista_fitness
+
+def dos_opt(individuo):    #Mecanismo para hacer Local Search (Cambiamos 2 nodos no adyacentes e invertimos la ruta entre ellos sólo)
+    aux1 = random.randint(1,len(individuo)) #Ojo -> Esto indica posición en el array, no valor del elemento. Es decir, no es la base 5, es la base en la posición 5 del array
+    aux2 = random.randint(1,len(individuo))
+    if len(individuo) == 2: #Caso extremo de 2 bases para un intermediario
+        return individuo
+    while abs(aux1 - aux2) == 1 or aux1 >= aux2:  #Evitamos bases adyacentes en el orden
+        aux1 = random.randint(1,len(individuo))
+        aux2 = random.randint(1,len(individuo))
+    individuo_aux = individuo[:]
+    individuo_aux[aux1:aux2] = individuo[aux2 - 1:aux1 - 1:-1]  #Invertimos el orden entre esas 2 subrutas
+    best = individuo_aux
+    return best
 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
@@ -704,12 +716,13 @@ if __name__ == "__main__":
             distancia_euclidea_SD = Distancia_Base_Supply_Depot_2D(bases_SD,bases[indices_bases_SD[indices_bases_inter[x]]])  # Obtenemos distancias de bases con otra base
             dist_bases_list_SD.append(distancia_euclidea_SD)    #Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
         for j in range(Generaciones):
-            if j % 25 == 0: #Cada 50 generaciones, reinicializamos la población parcialmente para evitar mínimos locales
+            if j % 50 == 0 and j != 0: #Cada 50 generaciones, reinicializamos la población parcialmente para evitar mínimos locales
                 Pob_Init_Aux = Ev2.PoblacionInicial_Viajante(Individuos, Tam_Indiv, Num_Orden)
-                Pob_Init[-int(numero_bases*0.95):] = Pob_Init_Aux[-int(numero_bases*0.95):]
+                Pob_Init[-int(numero_bases*0.95):] = Pob_Init_Aux[-int(numero_bases*0.95):]   #Cambiamos algunas soluciones por otras reinicializando
+                Pob_Init[1:int(numero_bases*0.05)] = np.array([dos_opt(elemento) for elemento in Pob_Init[1:int(numero_bases*0.05)]])
             Fitness_Viajante = Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, Pob_Init, Sol_Final,indices_bases_SD[indices_bases_inter])
             Pob_Act, Costes_Viajante = Ev2.Seleccion(Pob_Init, Fitness_Viajante)
-            np.random.shuffle(Pob_Act)    #Salteamos la selección así no concentramos las mejores soluciones en una parte si éstas son iguales
+            #np.random.shuffle(Pob_Act)    #Salteamos la selección así no concentramos las mejores soluciones en una parte si éstas son iguales
             Pob_Init = Ev2.Cruce_Viajante(Pob_Act, Num_Orden)
             Costes_Generacion.append(Costes_Viajante[0])
         print("Coste Solución SD " + str(k+1) + ": " + str(Costes_Viajante[0]))
@@ -750,8 +763,8 @@ if __name__ == "__main__":
                         for l in range(len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]])-1):
                             plt.plot([longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l]],longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l+1]]],
                                     [latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l]],latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][l+1]]], color=color)
-                        plt.plot([longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]])-1]], longitudes_bases[Lista_Sol_Final[v][k+1]]],
-                                 [latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]])-1]], latitudes_bases[Lista_Sol_Final[v][k+1]]], color=color)
+                        plt.plot([longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]])-1]], longitudes_bases[Lista_Sol_Final[v][k]]],
+                                 [latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]])-1]], latitudes_bases[Lista_Sol_Final[v][k]]], color=color)
             elif Lista_Sol_Final[v][k] in ind_intermediarios:   #Si el primero es intermediario y el siguiente no lo es
                 indice_lista_rutas_1 = np.where(ind_intermediarios == Lista_Sol_Final[v][k])[0]  # Buscamos el índice del intermediario
                 if not isinstance(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]],float): # Tiene bases asociadas

@@ -19,10 +19,10 @@ class Fitness(AbsObjectiveFunc):
             return Funcion_Fitness(distancias_euclideas, solution)
         if len(solution) < numero_bases:
             if len(solution) == len(indices_bases_inter) and flag_1 == True:  #Fitness para viajante en intermediarios
-                solution_normal.astype(int)
-                return Funcion_Fitness_Viajante_Intermediario(dist_bases_list_inter, solution_normal)
+                return Funcion_Fitness_Viajante_Intermediario(dist_bases_list_inter, solution)
             elif len(solution) == len(indices_bases_inter) and flag_2 == True:   #Fitness para viajante normal
-                solution_normal.astype(int)
+                solution_normal[0].astype(int)
+                solution_normal[1].astype(int)
                 return Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, solution, solution_normal,indices_bases_SD[indices_bases_inter])
 
 
@@ -121,6 +121,7 @@ def Funcion_Fitness_Viajante_Intermediario(distancias, individuo):
         k = j+1
         fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
     fitness += distancias[indices_orden[0]][len(indices_orden)]         #Sumamos distancia desde inter hasta base
+    fitness += distancias[indices_orden[len(indices_orden) - 1]][len(indices_orden)]  # Sumamos distancia de vuelta al inter
     fitness = fitness/(len(individuo)+1)# -> Aquí normalizaríamos, pero perderíamos información de distancias totales en los intermediarios para la solución general
     return fitness
 
@@ -330,7 +331,7 @@ if __name__ == "__main__":
     Pob_Actual = []
     Lista_Bases_Actual = []
     Costes = []
-    poblacion_inicial = 100
+    poblacion_inicial = 200
     numero_bases = 200
     numero_supply_depots = 10
     capacidad_maxima = 20
@@ -401,7 +402,7 @@ if __name__ == "__main__":
 
     ## Hasta aquí generamos las bases y SD que vamos a tener antes del algoritmo -> Junto con las distancias asociadas
 
-    params = {                      #Hiperparámetros del algoritmo
+    params_Inter = {                      #Hiperparámetros del algoritmo
         "popSize": poblacion_inicial, #Población inicial
         "rho": 0.6, #Porcentaje de ocupación de corales del Reef inicial
         "Fb": 0.98, #Proporción de Broadcast Spawning
@@ -413,7 +414,7 @@ if __name__ == "__main__":
 
         "stop_cond": "Ngen",   #Condición de parada
         "time_limit": 4000.0,   #Tiempo límite (real, no de CPU) de ejecución
-        "Ngen": 500,  #Número de generaciones
+        "Ngen": 100,  #Número de generaciones
         "Neval": 5100,   #Número de evaluaciones de la función objetivo
         "fit_target": 50,   #Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 
@@ -425,11 +426,42 @@ if __name__ == "__main__":
         "dyn_method": "success",    #Determina la probabilidad de elegir un substrato para cada coral en la siguiente generación -> Con 'success' usa el ratio de larvas exitosas en cada generación
         "dyn_metric": "best",    #Determina cómo agregar los valores de cada substrato para obtener la medida de cada uno
         "dyn_steps": 10,    #Número de evaluaciones por cada substrato
-        "prob_amp": 0.001    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
+        "prob_amp": 0.01    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
+    }
+
+    params = {  # Hiperparámetros del algoritmo
+        "popSize": poblacion_inicial,  # Población inicial
+        "rho": 0.6,  # Porcentaje de ocupación de corales del Reef inicial
+        "Fb": 0.98,  # Proporción de Broadcast Spawning
+        "Fd": 0.2,  # Proporción de Depredación
+        "Pd": 0.8,  # Probabilidad de Depredación
+        "k": 3,  # Número máximo de intentos para que la larva intente asentarse
+        "K": 20,  # Número máximo de corales con soluciones duplicadas
+        "group_subs": True,
+        # Si 'True', los corales se reproducen sólo en su mismo substrato, si 'False', se reproducen con toda la población
+
+        "stop_cond": "Ngen",  # Condición de parada
+        "time_limit": 4000.0,  # Tiempo límite (real, no de CPU) de ejecución
+        "Ngen": 100,  # Número de generaciones
+        "Neval": 5100,  # Número de evaluaciones de la función objetivo
+        "fit_target": 50,  # Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
+
+        "verbose": True,  # Informe periódico de cómo va el algoritmo
+        "v_timer": 1,  # Tiempo entre informes generados
+        "Njobs": 1,  # Número de trabajos a ejecutar en paralelo -> Como es 1, se ejecuta de forma secuencial
+
+        "dynamic": True,
+        # Determina si usar la variante dinámica del algoritmo -> Permite cambiar el tamaño de cada substrato (Mirar paper)
+        "dyn_method": "success",
+        # Determina la probabilidad de elegir un substrato para cada coral en la siguiente generación -> Con 'success' usa el ratio de larvas exitosas en cada generación
+        "dyn_metric": "best",  # Determina cómo agregar los valores de cada substrato para obtener la medida de cada uno
+        "dyn_steps": 10,  # Número de evaluaciones por cada substrato
+        "prob_amp": 0.01
+        # Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
     }
 
     operators = [
-        SubstrateInt("MutSample", {"method": "Gauss", "F": 1, "N": 3}),  # Rand Mutation -> F = Desviación Típica; N = Número de muestras a mutar
+        SubstrateInt("MutSample", {"method": "Gauss", "F": 1.5, "N": 5}),  # Rand Mutation -> F = Desviación Típica; N = Número de muestras a mutar
         SubstrateInt("Multipoint"),    #Multi-Point Crossover
         SubstrateInt("BLXalpha", {"F": 0.5}),  #BLX-Alpha -> F = Alpha
         SubstrateInt("DE/best/1", {"F": 0.7, "Cr": 0.8})   #Differential Evolution -> F = Factor de escalado de la ecuación; Cr = Prob. de Recombinación
@@ -498,19 +530,18 @@ if __name__ == "__main__":
         if len(indices_bases_inter) == 1: #Una base asociada a ese intermediario
             fitness_1 = 0.0
             fitness_1 += 2.0 * dist_bases_list_inter[0][len(dist_bases_list_inter)]
-            Array_Indices = np.array(indices_bases_inter)
-            Ruta_Inter = Array_Indices[0]   #Sacamos la base asociada y la guardamos
+            Ruta_Inter = indices_bases_inter   #Sacamos la base asociada y la guardamos
             Lista_Rutas_Intermediario.append(Ruta_Inter)  # Guardamos la ruta de ese intermediario
             Lista_Fitness_Intermediario.append(fitness_1)
             continue
         flag_1 = True
         objfunc_Viajante = Fitness(len(indices_bases_inter))
-        Coral_Inter = CRO_SL(objfunc_Viajante, operators, params)
+        Coral_Inter = CRO_SL(objfunc_Viajante, operators, params_Inter)
         solution_Inter, Costes_Inter = Coral_Inter.optimize()
         flag_1 = False  #Usamos flags para saber cuándo entra en un viajante o en otro del CRO SL
         print("Coste Solución " + str(i) + ": " + str(Costes_Inter))
         Array_Indices = np.array(indices_bases_inter)
-        Ruta_Inter = Array_Indices[solution_Inter]
+        Ruta_Inter = Array_Indices[solution_Inter.astype(int)]
         Lista_Rutas_Intermediario.append(Ruta_Inter)    #Guardamos la ruta de ese intermediario
         Lista_Fitness_Intermediario.append(Costes_Inter)
 
@@ -530,7 +561,7 @@ if __name__ == "__main__":
         Coral = CRO_SL(objfunc,operators,params)
         solution, Costes_Viajante = Coral.optimize()
         flag_2 = False
-        Lista_Sol_Final.append(indices_bases_SD[indices_bases_inter][solution])  # Guardamos la ruta de la solución
+        Lista_Sol_Final.append(indices_bases_SD[indices_bases_inter][solution.astype(int)])  # Guardamos la ruta de la solución
 
     #Graficamos la solución
     fig = plt.figure(figsize=(10, 6))
@@ -577,13 +608,12 @@ if __name__ == "__main__":
                                      color=color)
                         plt.plot([longitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][
                             len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) - 1]],
-                                  longitudes_bases[Lista_Sol_Final[v][k + 1]]],
+                                  longitudes_bases[Lista_Sol_Final[v][k]]],
                                  [latitudes_bases[Lista_Rutas_Intermediario[indice_lista_rutas_1[0]][
                                      len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) - 1]],
-                                  latitudes_bases[Lista_Sol_Final[v][k + 1]]], color=color)
+                                  latitudes_bases[Lista_Sol_Final[v][k]]], color=color)
             elif Lista_Sol_Final[v][k] in ind_intermediarios:  # Si el primero es intermediario y el siguiente no lo es
-                indice_lista_rutas_1 = np.where(ind_intermediarios == Lista_Sol_Final[v][k])[
-                    0]  # Buscamos el índice del intermediario
+                indice_lista_rutas_1 = np.where(ind_intermediarios == Lista_Sol_Final[v][k])[0]  # Buscamos el índice del intermediario
                 if not isinstance(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]], float):  # Tiene bases asociadas
                     if len(Lista_Rutas_Intermediario[indice_lista_rutas_1[0]]) == 1:  # Sólo una base asociada
                         plt.plot([longitudes_inter[indice_lista_rutas_1[0]],

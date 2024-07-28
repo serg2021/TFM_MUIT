@@ -460,23 +460,16 @@ def Distancia_Base_Supply_Depot_2D(base, supply):
         x_base, y_base = base
         dist = math.sqrt((x_base - x_supply) ** 2 + (y_base - y_supply) ** 2)
     return dist
-def Funcion_Fitness(distancias, poblacion):
-    lista_fitness = []
-    for i in range(len(poblacion)):    #Aplicamos la función fitness a cada solución
-        fitness = 0
-        for j in range(len(poblacion[i][0])):   #Bucle para recorrer bases que no sean intermediarios
-            SD_base = int(poblacion[i][0][j])    #Saco el SD asociado a una base de la población
-            ind_inter = np.where(poblacion[i][0][ind_intermediarios] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
-            for k in ind_inter: #Comprobamos para esos intermediarios sus distancias con la base elegida
-                distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[k])
-                if distancia_base_inter < distancias[SD_base][j]:   #Si esa distancia es menor que la de la base al SD
-                    fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
-                else:
-                    continue
-            fitness += distancias[SD_base][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
-        fitness = fitness/numero_bases
-        lista_fitness.append(fitness)
-    return lista_fitness
+def Funcion_Fitness(distancias, individuo):
+    fitness = 0
+    indices_orden = list(np.argsort(individuo))  # Sacamos el orden de los índices para verlos de forma consecutiva
+    for j in range(len(indices_orden) - 1):
+        k = j + 1
+        fitness += distancias[indices_orden[j]][indices_orden[k]]  # Calculo fitness buscando en la matriz de distancias la distancia asociada
+    #fitness += dist[SD][indices[indices_orden[0]]]
+    #fitness += dist[SD][indices[indices_orden[len(indices_orden) - 1]]]  # Sumamos distancia del camino de vuelta
+    fitness = fitness / len(individuo)
+    return fitness
 
 def Funcion_Fitness_Viajante(distancias, dist, poblacion, pob, indices):
     lista_fitness = []
@@ -498,7 +491,7 @@ def Funcion_Fitness_Viajante(distancias, dist, poblacion, pob, indices):
                 fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
         fitness += dist[SD][indices[indices_orden[0]]]
         fitness += dist[SD][indices[indices_orden[len(indices_orden)-1]]]   #Sumamos distancia del camino de vuelta
-        #fitness = fitness/(len(poblacion[0])+1)
+        fitness = fitness/(len(poblacion[0])+1)
         lista_fitness.append(fitness)
     return lista_fitness
 
@@ -512,21 +505,27 @@ def Funcion_Fitness_Viajante_Intermediario(distancias, poblacion):
             fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
         fitness += distancias[indices_orden[0]][len(indices_orden)]         #Sumamos distancia desde inter hasta base
         fitness += distancias[indices_orden[len(indices_orden)-1]][len(indices_orden)]  #Sumamos distancia de vuelta al inter
-        #fitness = fitness/(len(poblacion[0])+1)# -> Aquí normalizaríamos, pero perderíamos información de distancias totales en los intermediarios para la solución general
+        fitness = fitness/(len(poblacion[0])+1)# -> Aquí normalizaríamos, pero perderíamos información de distancias totales en los intermediarios para la solución general
         lista_fitness.append(fitness)
     return lista_fitness
 
 def dos_opt(individuo):    #Mecanismo para hacer Local Search (Cambiamos 2 nodos no adyacentes e invertimos la ruta entre ellos sólo)
-    aux1 = random.randint(1,len(individuo)) #Ojo -> Esto indica posición en el array, no valor del elemento. Es decir, no es la base 5, es la base en la posición 5 del array
-    aux2 = random.randint(1,len(individuo))
+    best = individuo.copy()
     if len(individuo) == 2: #Caso extremo de 2 bases para un intermediario
         return individuo
-    while abs(aux1 - aux2) == 1 or aux1 >= aux2:  #Evitamos bases adyacentes en el orden
-        aux1 = random.randint(1,len(individuo))
-        aux2 = random.randint(1,len(individuo))
-    individuo_aux = individuo[:]
-    individuo_aux[aux1:aux2] = individuo[aux2 - 1:aux1 - 1:-1]  #Invertimos el orden entre esas 2 subrutas
-    best = individuo_aux
+    improved = True
+    while improved:
+        improved = False
+        for i in range(1, len(individuo) - 1):
+            for j in range(i + 1, len(individuo)):
+                if j - i == 1:  #Evitamos nodos adyacentes
+                    continue
+                individuo_aux = individuo.copy()
+                individuo_aux[i:j] = individuo[j - 1:i - 1:-1]  #Invertimos el orden entre esas 2 subrutas
+                if Funcion_Fitness(dist_bases_list_SD, individuo_aux) < Funcion_Fitness(dist_bases_list_SD, individuo):
+                    best = individuo_aux
+                    improved = True
+        individuo = best.copy()
     return best
 
 if __name__ == "__main__":
@@ -670,15 +669,15 @@ if __name__ == "__main__":
         Num_Orden = len(indices_bases_inter)
         Ev2 = EvolutiveClass(Individuos, Generaciones, len(indices_bases_inter), len(indices_bases_inter), Prob_Padres, Prob_Mutacion,Prob_Cruce) #Objeto de Evolutivo
         Pob_Init = Ev2.PoblacionInicial_Viajante(Individuos, Tam_Indiv, Num_Orden)
-        dist_bases_list_inter = []
+        dist_bases_list_SD = []
         dist_bases_inter = [bases[v] for v in indices_bases_inter] #Bases asociadas a un intermediario
         dist_bases_inter.append(bases[ind_intermediarios[i]])   #Añadimos también el propio intermediario
         for x in range(len(indices_bases_inter)):  #Sacamos distancias entre las bases del mismo SD
             distancia_euclidea_inter = Distancia_Base_Supply_Depot_2D(dist_bases_inter,bases[indices_bases_inter[x]])  # Obtenemos distancias de bases con otra base
-            dist_bases_list_inter.append(distancia_euclidea_inter)    #Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
+            dist_bases_list_SD.append(distancia_euclidea_inter)    #Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
         if len(indices_bases_inter) == 1: #Una base asociada a ese intermediario
             fitness_1 = 0.0
-            fitness_1 += 2.0 * dist_bases_list_inter[0][len(dist_bases_list_inter)]
+            fitness_1 += 2.0 * dist_bases_list_SD[0][len(dist_bases_list_SD)]
             Array_Indices = np.array(indices_bases_inter)
             Ruta_Orden = np.argsort(Pob_Init[0])  # Ordenamos las bases
             Ruta_Inter = Array_Indices[Ruta_Orden]
@@ -686,7 +685,7 @@ if __name__ == "__main__":
             Lista_Fitness_Intermediario.append(fitness_1)
             continue
         for j in range(Generaciones):
-            Fitness_Viajante = Funcion_Fitness_Viajante_Intermediario(dist_bases_list_inter, Pob_Init)
+            Fitness_Viajante = Funcion_Fitness_Viajante_Intermediario(dist_bases_list_SD, Pob_Init)
             Pob_Act, Costes_Viajante = Ev2.Seleccion(Pob_Init, Fitness_Viajante)
             Pob_Init = Ev2.Cruce_Viajante(Pob_Act, Num_Orden)
         print("Coste Solución " + str(i) + ": " + str(Costes_Viajante[0]))
@@ -698,7 +697,7 @@ if __name__ == "__main__":
     #AQUÍ COMIENZA EL VIAJANTE NORMAL CONTANDO LOS FITNESS DE LOS INTERMEDIARIOS
     #Hay que mirar a ver cómo hacemos el plot de las rutas teniendo en cuenta las de las bases de los intermediarios
     Individuos = 200
-    Generaciones = 1500
+    Generaciones = 1000
     Lista_Sol_Final = []
     Costes_Viajante = 0.0
     Costes_Generacion = []
@@ -716,10 +715,16 @@ if __name__ == "__main__":
             distancia_euclidea_SD = Distancia_Base_Supply_Depot_2D(bases_SD,bases[indices_bases_SD[indices_bases_inter[x]]])  # Obtenemos distancias de bases con otra base
             dist_bases_list_SD.append(distancia_euclidea_SD)    #Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
         for j in range(Generaciones):
-            if j % 50 == 0 and j != 0: #Cada 50 generaciones, reinicializamos la población parcialmente para evitar mínimos locales
+            if j % 100 == 0 and j != 0: #Cada 50 generaciones, reinicializamos la población parcialmente para evitar mínimos locales
                 Pob_Init_Aux = Ev2.PoblacionInicial_Viajante(Individuos, Tam_Indiv, Num_Orden)
-                Pob_Init[-int(numero_bases*0.95):] = Pob_Init_Aux[-int(numero_bases*0.95):]   #Cambiamos algunas soluciones por otras reinicializando
-                Pob_Init[1:int(numero_bases*0.05)] = np.array([dos_opt(elemento) for elemento in Pob_Init[1:int(numero_bases*0.05)]])
+                Pob_Init[-int(numero_bases*0.9):] = Pob_Init_Aux[-int(numero_bases*0.9):]   #Cambiamos algunas soluciones por otras reinicializando
+                idx = np.random.randint(1,len(indices_bases_inter), size=(int(numero_bases*0.1)-1,2))
+                for row in idx:
+                    while row[0] == row[1]:
+                        row[1] = np.random.randint(0, len(indices_bases_inter))
+                for row_idx, (idx1,idx2) in enumerate(idx):
+                    Pob_Init[row_idx+1, [idx1, idx2]] = Pob_Init[row_idx+1, [idx2, idx1]]
+                Pob_Init[1:int(numero_bases*0.1)] = np.array([dos_opt(elemento) for ind, elemento in enumerate(Pob_Init[1:int(numero_bases*0.1)])])
             Fitness_Viajante = Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, Pob_Init, Sol_Final,indices_bases_SD[indices_bases_inter])
             Pob_Act, Costes_Viajante = Ev2.Seleccion(Pob_Init, Fitness_Viajante)
             #np.random.shuffle(Pob_Act)    #Salteamos la selección así no concentramos las mejores soluciones en una parte si éstas son iguales

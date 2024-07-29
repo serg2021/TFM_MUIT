@@ -105,8 +105,10 @@ class CRO_SL:
         
         best_indiv, best_fitness = self.population.best_solution()
         self.history.append(best_fitness)
-        #self.sol_history.append(best_indiv)    #DESCOMENTAR PARA ARRAYS
-        self.sol_history.append(copy.deepcopy(best_indiv))
+        if isinstance(best_indiv, list):
+            self.sol_history.append(copy.deepcopy(best_indiv))
+        else:
+            self.sol_history.append(best_indiv)
     
     
     def local_search(self, operator, n_ind, iterations=100):
@@ -184,26 +186,26 @@ class CRO_SL:
         if indiv_history is None:
             indiv_history = f"indiv_history{postfix}.csv"
         
-        solution_file = os.path.join(r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT', solution_file)
+        solution_file = os.path.join(r'C:\Users\sergi\CRO_SL\Cadena_Suministro', solution_file)
         population_file = os.path.join(
-            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+            r'C:\Users\sergi\CRO_SL\Cadena_Suministro',
             population_file)
         history_file = os.path.join(
-            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+            r'C:\Users\sergi\CRO_SL\Cadena_Suministro',
             history_file)
         indiv_history = os.path.join(
-            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+            r'C:\Users\sergi\CRO_SL\Cadena_Suministro',
             indiv_history)
         prob_file = os.path.join(
-            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT',
+            r'C:\Users\sergi\CRO_SL\Cadena_Suministro',
             prob_file)
 
-        def flatten(lista):   #Función que nos sirve para "aplanar" cada sublista de la solución    #DESCOMENTAR PARA TIPOS DE RECURSOS
-            for elemento in lista:                                          #DESCOMENTAR PARA TIPOS DE RECURSOS
-                if isinstance(elemento, list):                              #DESCOMENTAR PARA TIPOS DE RECURSOS
-                    yield from flatten(elemento)                            #DESCOMENTAR PARA TIPOS DE RECURSOS
-                else:                                                       #DESCOMENTAR PARA TIPOS DE RECURSOS
-                    yield elemento                                          #DESCOMENTAR PARA TIPOS DE RECURSOS
+        def flatten(lista):   #Función que nos sirve para "aplanar" cada sublista de la solución
+            for elemento in lista:
+                if isinstance(elemento, list):
+                    yield from flatten(elemento)
+                else:
+                    yield elemento
 
         ind, fit = self.population.best_solution()
         if isinstance(ind, list):   #PARA TIPOS DE RECURSOS

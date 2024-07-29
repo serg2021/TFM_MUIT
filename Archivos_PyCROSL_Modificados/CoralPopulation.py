@@ -48,8 +48,10 @@ class Coral:
         """
 
         new_solution = self.substrate.evolve(self, population, self.objfunc)
-        #new_solution = self.objfunc.repair_solution(new_solution)      #DESCOMENTAR PARA ARRAYS
-        new_solution = self.objfunc.repair_solution(copy.deepcopy(new_solution))
+        if isinstance(new_solution, list):
+            new_solution = self.objfunc.repair_solution(copy.deepcopy(new_solution))
+        else:
+            new_solution = self.objfunc.repair_solution(new_solution)
         return Coral(new_solution, self.objfunc, self.substrate)
 
 
@@ -134,11 +136,12 @@ class CoralPopulation:
         for i in range(amount):
             substrate_idx = self.substrate_list[i]
             new_sol = self.objfunc.random_solution()
-            fixed_sol = self.objfunc.repair_solution(copy.deepcopy(new_sol))
-            new_coral = Coral(copy.deepcopy(fixed_sol), self.objfunc, self.substrates[substrate_idx])
-
-            #fixed_sol = self.objfunc.repair_solution(new_sol)              #DESCOMENTAR PARA ARRAYS
-            #new_coral = Coral(fixed_sol, self.objfunc, self.substrates[substrate_idx])     #DESCOMENTAR PARA ARRAYS
+            if isinstance(new_sol, list):
+                fixed_sol = self.objfunc.repair_solution(copy.deepcopy(new_sol))
+                new_coral = Coral(copy.deepcopy(fixed_sol), self.objfunc, self.substrates[substrate_idx])
+            else:
+                fixed_sol = self.objfunc.repair_solution(new_sol)
+                new_coral = Coral(fixed_sol, self.objfunc, self.substrates[substrate_idx])
 
             self.population.append(new_coral)
 
@@ -243,8 +246,10 @@ class CoralPopulation:
             substrate_groups = [[] for i in self.substrates]
             for i, idx in enumerate(self.substrate_list):
                 if i < len(self.population):
-                    substrate_groups[idx].append(copy.deepcopy(self.population[i]))
-                    #substrate_groups[idx].append(self.population[i])        #DESCOMENTAR PARA ARRAYS
+                    if isinstance(self.population[i], list):
+                        substrate_groups[idx].append(copy.deepcopy(self.population[i]))
+                    else:
+                        substrate_groups[idx].append(self.population[i])
             
             
             # Reproduce the corals of each group
@@ -262,11 +267,12 @@ class CoralPopulation:
                             self.substrate_data[i].append(new_coral.get_fitness())
                     else:
                         new_sol = self.objfunc.random_solution()
-                        fixed_sol = self.objfunc.repair_solution(copy.deepcopy(new_sol))
-                        new_coral = Coral(copy.deepcopy(fixed_sol), self.objfunc)
-
-                        # fixed_sol = self.objfunc.repair_solution(new_sol)              #DESCOMENTAR PARA ARRAYS
-                        # new_coral = Coral(fixed_sol, self.objfunc)     #DESCOMENTAR PARA ARRAYS
+                        if isinstance(new_sol, list):
+                            fixed_sol = self.objfunc.repair_solution(copy.deepcopy(new_sol))
+                            new_coral = Coral(copy.deepcopy(fixed_sol), self.objfunc)
+                        else:
+                            fixed_sol = self.objfunc.repair_solution(new_sol)
+                            new_coral = Coral(fixed_sol, self.objfunc)
 
                     # Add larva to the list of larvae
                     larvae.append(new_coral)
@@ -286,13 +292,14 @@ class CoralPopulation:
                         self.substrate_data[s_idx].append(new_coral.get_fitness())
                 else:
                     new_sol = self.objfunc.random_solution()
-                    fixed_sol = self.objfunc.repair_solution(copy.deepcopy(new_sol))
-                    new_coral = Coral(copy.deepcopy(fixed_sol), self.objfunc)
+                    if isinstance(new_sol, list):
+                        fixed_sol = self.objfunc.repair_solution(copy.deepcopy(new_sol))
+                        new_coral = Coral(copy.deepcopy(fixed_sol), self.objfunc)
+                    else:
+                        fixed_sol = self.objfunc.repair_solution(new_sol)
+                        new_coral = Coral(fixed_sol, self.objfunc)
 
-                    # fixed_sol = self.objfunc.repair_solution(new_sol)              #DESCOMENTAR PARA ARRAYS
-                    # new_coral = Coral(fixed_sol, self.objfunc)     #DESCOMENTAR PARA ARRAYS
-
-                # Add larva to the list of larvae
+                        # Add larva to the list of larvae
                 larvae.append(new_coral)
         
         return larvae

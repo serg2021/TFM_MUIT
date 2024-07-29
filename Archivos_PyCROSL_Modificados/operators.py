@@ -177,15 +177,18 @@ def mutate_sample(vector, population, params):
             ind_vec += 1
         return vector
     else:
-        # mask_pos = np.hstack([np.ones(n), np.zeros(vector.shape[1] - n)]).astype(bool)     #DESCOMENTAR PARA CADENA DE SUMINISTRO
-        mask_pos = np.hstack([np.ones(n), np.zeros(vector.size - n)]).astype(bool)
+        #mask_pos = np.hstack([np.ones(n), np.zeros(vector.shape[1] - n)]).astype(bool)     #DESCOMENTAR PARA CADENA DE SUMINISTRO
+        if vector.size < n:    #Si el número de muestras a mutar es mayor que el tamaño de la solución -> No mutamos
+            return vector
+        else:
+            mask_pos = np.hstack([np.ones(n), np.zeros(vector.size - n)]).astype(bool)
         np.random.shuffle(mask_pos)
 
         popul_matrix = np.vstack([i.solution for i in population])
         mean = popul_matrix.mean(axis=0)[mask_pos]  #Hace la media para cada columna de la matriz, según indique mask_pos
         std = np.maximum(popul_matrix.std(axis=0)[mask_pos], 1e-6) * strength  # ensure there will be some standard deviation
         rand_vec = sampleDistribution(method, n, mean, std, low, up)
-
+        rand_vec = np.array(rand_vec, dtype=int)
         #vector[0][mask_pos] = rand_vec     #DESCOMENTAR PARA CADENA DE SUMINISTRO
         vector[mask_pos] = rand_vec
         return vector
@@ -894,10 +897,6 @@ def DEBest1(vector, population, F, CR):
                 if isinstance(vector[0][i], list):
                     vector[0][i] = list(set(vector[0][i]))
             return vector
-
-        #FALLA AQUÍ, PORQUE CUANDO NO DETECTA EL IF, NO TIENE NADA QUE DEVOLVER Y DEVUELVE NONE
-        #Mañana hacemos la reparación, que consistirá en un else con la solución de entrada de vuelta (corregida por si acaso)
-
 
     else:
         if len(population) > 3:

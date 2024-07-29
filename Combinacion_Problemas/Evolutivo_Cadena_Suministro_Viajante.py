@@ -80,8 +80,6 @@ class EvolutiveClass:
 
         for v in range(self.Num_Individuos - self.Num_Padres): #Bucle para generar HIJOS
             Indice_Padres = random.sample(Indices_Validos, 2)
-            #Indice_Padres = random.sample([j for j in Indices_Validos if j not in Indice_Seleccionado], 2)            # Se elige aleatoriamente el indice de los padres
-            #Indice_Seleccionado.extend(Indice_Padres)   #Guardamos los índices elegidos para que no los vuelva a repetir en la siguiente iteración
             Padre1 = poblacion[Indice_Padres[0]][:]                              # Se coge el padre 1
             Padre2 = poblacion[Indice_Padres[1]][:]                              # Se coge el padre 2
             Hijo = np.copy(Padre1)                                              # El hijo va a ser una copia del padre 1
@@ -130,29 +128,51 @@ class EvolutiveClass:
             poblacion = np.insert(poblacion,self.Num_Padres +v,Hijo, axis = 0)   # Se añade a la población una vez que ha mutado y se ha reparado
         return poblacion
 
-    def Cruce_Viajante (self, poblacion, Num_Max = None):
+    def Cruce_Viajante (self, poblacion, Num_Max = None):   #Aplicamo Order Crossover (OX)
         if Num_Max == None:
             Num_Max = self.Num_Max
         Indices_Validos = list(np.arange(self.Num_Padres))
 
         for i in range(self.Num_Individuos - self.Num_Padres): #Bucle para generar HIJOS
             Indice_Padres = random.sample(Indices_Validos, 2)
+            ind_orden_p2 = []
             Padre1 = poblacion[Indice_Padres[0],:]                              # Se coge el padre 1
             Padre2 = poblacion[Indice_Padres[1],:]                              # Se coge el padre 2
-            Hijo = np.copy(Padre1)                                              # El hijo va a ser una copia del padre 1
-            vector = 1*(np.random.rand(self.Tam_Individuos) > self.Prob_Cruce)  # Se genera un vector para seleccionar los genes del padre 2
-            Hijo[np.where(vector==1)[0]] = Padre2[np.where(vector==1)[0]]       # Los genes seleccionados del padre 2 pasan al hijo
+            if Num_Max > 4: #Así evitamos errores en el random para que el tamaño de la ventana no sea igual que la solución entera -> No es el objetivo
+                rand_tam_p1 = np.random.randint(1, int(Num_Max/2)) #Tamaño de la ventana que se va a copiar en Hijo
+            else:
+                rand_tam_p1 = np.random.randint(1, Num_Max) #Tamaño de la ventana que se va a copiar en Hijo
+            rand_ind_p1 = np.random.randint(0, Num_Max) #Inicio de la ventana
+            while rand_ind_p1 + rand_tam_p1 > Num_Max:  #Nos aseguramos de que la ventana no se salga del individuo -> Puede llegar aún así al final de la solución
+                rand_ind_p1 = np.random.randint(0, Num_Max)  # Inicio de la ventana
+            Hijo = np.zeros(Num_Max, dtype=int)
+            Hijo[rand_ind_p1:rand_ind_p1 + rand_tam_p1] = Padre1[rand_ind_p1:rand_ind_p1 + rand_tam_p1] #Colocamos la ventana en el Hijo
+            for j in range(len(Padre2)):
+                if Padre2[j] not in Hijo[rand_ind_p1:rand_ind_p1 + rand_tam_p1]:    #Si el valor de Padre2 no se encuentra en la ventana -> Se añade a la lista
+                    ind_orden_p2.append(Padre2[j])
+            ind_orden_p2 = np.array(ind_orden_p2, dtype=int)   #Lo pasamos a array
+            if rand_ind_p1 + rand_tam_p1 == Num_Max:    #Caso extremo -> La ventana llega justo al final de la solución
+                Hijo[:rand_ind_p1] = ind_orden_p2
+            elif rand_ind_p1 == 0:  #Caso extremo -> La ventana conmienza desde el principio de la solución
+                Hijo[rand_ind_p1 + rand_tam_p1:] = ind_orden_p2 #Desde la izquierda de la ventana ponemos en orden los valores que ha encontrado en Padre2
+            else:
+                Hijo[rand_ind_p1 + rand_tam_p1:] = ind_orden_p2[:len(Hijo[rand_ind_p1 + rand_tam_p1:])] #Desde la izquierda de la ventana ponemos en orden los valores que ha encontrado en Padre2
+                Hijo[:rand_ind_p1] = ind_orden_p2[len(Hijo[rand_ind_p1 + rand_tam_p1:]):]
+            #vector = 1*(np.random.rand(self.Tam_Individuos) > self.Prob_Cruce)  # Se genera un vector para seleccionar los genes del padre 2
+            #Hijo[np.where(vector==1)[0]] = Padre2[np.where(vector==1)[0]]       # Los genes seleccionados del padre 2 pasan al hijo
+            if(self.Comprobacion_Individuo_Viajante(Hijo)):                    # Se comprueba si hay que reparar el hijo
+                 Hijo = self.Reparacion_Viajante(Hijo)
             if np.random.rand() < self.Prob_Mutacion:                           # Se comprueba si el hijo va a mutar
                 Hijo = self.Mutacion_Viajante(Hijo, Num_Max)
                 Hijo = dos_opt(Hijo)    #Aplicamos Local Search
-            if(self.Comprobacion_Individuo_Viajante(Hijo)):                    # Se comprueba si hay que reparar el hijo
-                 Hijo = self.Reparacion_Viajante(Hijo)
             poblacion = np.insert(poblacion,self.Num_Padres+i,Hijo, axis = 0)   # Se añade a la población una vez que ha mutado y se ha reparado
         return poblacion
 
     def Mutacion_Viajante (self, individuo, Num_Max=None):
-        aux = random.sample(list(np.arange(Num_Max)),2)                        # Se generan 2 números aleatorios para ver las posiciones que mutan
-        individuo[aux[0]], individuo[aux[1]] = individuo[aux[1]], individuo[aux[0]]     #Intercambiamos posiciones
+        rand_circle = np.random.randint(1, Num_Max)  # Número de rotaciones por solución
+        individuo = np.hstack((individuo[rand_circle:], individuo[:rand_circle]))
+        #aux = random.sample(list(np.arange(Num_Max)),2)                        # Se generan 2 números aleatorios para ver las posiciones que mutan
+        #individuo[aux[0]], individuo[aux[1]] = individuo[aux[1]], individuo[aux[0]]     #Intercambiamos posiciones
         return individuo
     def Mutacion (self, individuo, Num_Max=None):                                
         aux1 = np.random.randint(0, individuo[0].shape[0])                         # Se genera número aleatorio para ver la posición que muta
@@ -534,7 +554,7 @@ if __name__ == "__main__":
     Num_Generaciones = 10
     Tam_Individuos = 200
     Prob_Padres = 0.5
-    Prob_Mutacion = 0.1
+    Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
     Pob_Actual = []
@@ -715,19 +735,39 @@ if __name__ == "__main__":
             distancia_euclidea_SD = Distancia_Base_Supply_Depot_2D(bases_SD,bases[indices_bases_SD[indices_bases_inter[x]]])  # Obtenemos distancias de bases con otra base
             dist_bases_list_SD.append(distancia_euclidea_SD)    #Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
         for j in range(Generaciones):
-            if j % 100 == 0 and j != 0: #Cada 50 generaciones, reinicializamos la población parcialmente para evitar mínimos locales
-                Pob_Init_Aux = Ev2.PoblacionInicial_Viajante(Individuos, Tam_Indiv, Num_Orden)
-                Pob_Init[-int(numero_bases*0.9):] = Pob_Init_Aux[-int(numero_bases*0.9):]   #Cambiamos algunas soluciones por otras reinicializando
-                idx = np.random.randint(1,len(indices_bases_inter), size=(int(numero_bases*0.1)-1,2))
+            if j % 250 == 0 and j != 0: #Cada 50 generaciones, reinicializamos la población parcialmente para evitar mínimos locales
+                contador = 0
+                idx = np.random.randint(1,len(indices_bases_inter), size=(int(numero_bases*0.25)-1,2))
+                #Swapping
                 for row in idx:
                     while row[0] == row[1]:
                         row[1] = np.random.randint(0, len(indices_bases_inter))
                 for row_idx, (idx1,idx2) in enumerate(idx):
                     Pob_Init[row_idx+1, [idx1, idx2]] = Pob_Init[row_idx+1, [idx2, idx1]]
-                Pob_Init[1:int(numero_bases*0.1)] = np.array([dos_opt(elemento) for ind, elemento in enumerate(Pob_Init[1:int(numero_bases*0.1)])])
+                contador += int(numero_bases*0.25)
+                #Block-Swapping
+                rand_tam = np.random.randint(1, len(indices_bases_inter) / 4, size=(int(numero_bases * 0.25)))    #Tamaño aleatorio de 2 bloques/solución
+                idx_2 = np.random.randint(0, len(indices_bases_inter)/2, size=(int(numero_bases * 0.25)))   #Índice de comienzo del primer bloque
+                for x in range(len(idx_2)):
+                    while True:
+                        idx_2_2 = np.random.randint(0,len(indices_bases_inter) - rand_tam[x]) #Elegimos un índice de bloque que no solape con el primero
+                        if (idx_2[x] + rand_tam[x] <= idx_2_2) or (idx_2_2 + rand_tam[x] <= idx_2[x]):
+                            break
+                    copia_bloque = Pob_Init[x + contador][idx_2_2:idx_2_2+rand_tam[x]].copy()
+                    Pob_Init[x + contador][idx_2_2:idx_2_2+rand_tam[x]] = Pob_Init[x + contador][idx_2[x]:idx_2[x]+rand_tam[x]].copy()
+                    Pob_Init[x + contador][idx_2[x]:idx_2[x] + rand_tam[x]] = copia_bloque
+                contador += int(numero_bases*0.25)
+                #Rotación Circular
+                rand_circle = np.random.randint(1, len(indices_bases_inter), size=(int(numero_bases * 0.25)))    #Número de rotaciones por solución
+                for y in range(len(rand_circle)):
+                    Pob_Init[y + contador] = np.hstack((Pob_Init[y + contador][rand_circle[y]:],Pob_Init[y + contador][:rand_circle[y]]))
+                contador += int(numero_bases * 0.25)
+                #Reinicializamos población restante
+                Pob_Init[contador:] = Ev2.PoblacionInicial_Viajante(int(numero_bases*0.25), Tam_Indiv, Num_Orden)
+                Pob_Init[1:int(numero_bases*0.5)] = np.array([dos_opt(elemento) for ind, elemento in enumerate(Pob_Init[1:int(numero_bases*0.5)])]) #2-Opt
             Fitness_Viajante = Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, Pob_Init, Sol_Final,indices_bases_SD[indices_bases_inter])
             Pob_Act, Costes_Viajante = Ev2.Seleccion(Pob_Init, Fitness_Viajante)
-            #np.random.shuffle(Pob_Act)    #Salteamos la selección así no concentramos las mejores soluciones en una parte si éstas son iguales
+            np.random.shuffle(Pob_Act[1:])     #Salteamos la población para no concentrar los mismos individuos en una zona -> Todos menos el mejor (elitismo)
             Pob_Init = Ev2.Cruce_Viajante(Pob_Act, Num_Orden)
             Costes_Generacion.append(Costes_Viajante[0])
         print("Coste Solución SD " + str(k+1) + ": " + str(Costes_Viajante[0]))

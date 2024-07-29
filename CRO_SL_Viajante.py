@@ -85,7 +85,7 @@ def Funcion_Fitness(distancias, individuo):
     fitness = 0
     for j in range(len(individuo)):
         SD = individuo[j]    #Saco el SD asociado a una base de la población
-        if(SD > 9 or SD < 0 or isinstance(SD, float)):   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
+        if(SD > numero_supply_depots-1 or SD < 0 or isinstance(SD, float)):   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
             SD = np.random.randint(0,numero_supply_depots)                                   # Se genera el número a modificar
         fitness += distancias[SD][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
     fitness = fitness/numero_bases
@@ -215,10 +215,10 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
         f"Bases_SD.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
         f"Cap_Bases_SD.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -306,8 +306,8 @@ if __name__ == "__main__":
 
     ### AQUÍ COMIENZA EL PROBLEMA DEL VIAJANTE
 
-    Individuos = 100
-    Generaciones = 500
+    Individuos = 200
+    Generaciones = 1000
     Lista_Sol_Final = []
     Costes_Viajante = 0.0
 
@@ -368,7 +368,7 @@ if __name__ == "__main__":
     coste.show()
     # Graficamos las rutas óptimas
     colores = ['green', 'magenta', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'black', 'cyan']
-    plt.figure(2, figsize=(10, 6))
+    plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',
                 label='Puntos de Suministro')

@@ -74,8 +74,6 @@ class EvolutiveClass:
 
         for i in range(self.Num_Individuos - self.Num_Padres): #Bucle para generar HIJOS
             Indice_Padres = random.sample(Indices_Validos, 2)
-            #Indice_Padres = random.sample([j for j in Indices_Validos if j not in Indice_Seleccionado], 2)            # Se elige aleatoriamente el indice de los padres
-            #Indice_Seleccionado.extend(Indice_Padres)   #Guardamos los índices elegidos para que no los vuelva a repetir en la siguiente iteración
             Padre1 = poblacion[Indice_Padres[0],:]                              # Se coge el padre 1
             Padre2 = poblacion[Indice_Padres[1],:]                              # Se coge el padre 2
             Hijo = np.copy(Padre1)                                              # El hijo va a ser una copia del padre 1
@@ -96,19 +94,43 @@ class EvolutiveClass:
 
         for i in range(self.Num_Individuos - self.Num_Padres): #Bucle para generar HIJOS
             Indice_Padres = random.sample(Indices_Validos, 2)
-            #Indice_Padres = random.sample([j for j in Indices_Validos if j not in Indice_Seleccionado], 2)            # Se elige aleatoriamente el indice de los padres
-            #Indice_Seleccionado.extend(Indice_Padres)   #Guardamos los índices elegidos para que no los vuelva a repetir en la siguiente iteración
+            ind_orden_p2 = []
             Padre1 = poblacion[Indice_Padres[0],:]                              # Se coge el padre 1
             Padre2 = poblacion[Indice_Padres[1],:]                              # Se coge el padre 2
-            Hijo = np.copy(Padre1)                                              # El hijo va a ser una copia del padre 1
-            vector = 1*(np.random.rand(self.Tam_Individuos) > self.Prob_Cruce)  # Se genera un vector para seleccionar los genes del padre 2
-            Hijo[np.where(vector==1)[0]] = Padre2[np.where(vector==1)[0]]       # Los genes seleccionados del padre 2 pasan al hijo
-            if np.random.rand() < self.Prob_Mutacion:                           # Se comprueba si el hijo va a mutar
-                Hijo = self.Mutacion(Hijo, Num_Max)
+            rand_tam_p1 = np.random.randint(1, Num_Max)  # Tamaño de la ventana que se va a copiar en Hijo
+            rand_ind_p1 = np.random.randint(0, Num_Max)  # Inicio de la ventana
+            while rand_ind_p1 + rand_tam_p1 > Num_Max:  # Nos aseguramos de que la ventana no se salga del individuo -> Puede llegar aún así al final de la solución
+                rand_ind_p1 = np.random.randint(0, Num_Max)  # Inicio de la ventana
+            Hijo = np.zeros(Num_Max, dtype=int)
+            Hijo[rand_ind_p1:rand_ind_p1 + rand_tam_p1] = Padre1[rand_ind_p1:rand_ind_p1 + rand_tam_p1]  # Colocamos la ventana en el Hijo
+            for j in range(len(Padre2)):
+                if Padre2[j] not in Hijo[rand_ind_p1:rand_ind_p1 + rand_tam_p1]:  # Si el valor de Padre2 no se encuentra en la ventana -> Se añade a la lista
+                    ind_orden_p2.append(Padre2[j])
+            ind_orden_p2 = np.array(ind_orden_p2, dtype=int)  # Lo pasamos a array
+            if rand_ind_p1 + rand_tam_p1 == Num_Max:  # Caso extremo -> La ventana llega justo al final de la solución
+                Hijo[:rand_ind_p1] = ind_orden_p2
+            elif rand_ind_p1 == 0:  # Caso extremo -> La ventana conmienza desde el principio de la solución
+                Hijo[rand_ind_p1 + rand_tam_p1:] = ind_orden_p2  # Desde la izquierda de la ventana ponemos en orden los valores que ha encontrado en Padre2
+            else:
+                Hijo[rand_ind_p1 + rand_tam_p1:] = ind_orden_p2[:len(Hijo[rand_ind_p1 + rand_tam_p1:])]  # Desde la izquierda de la ventana ponemos en orden los valores que ha encontrado en Padre2
+                Hijo[:rand_ind_p1] = ind_orden_p2[len(Hijo[rand_ind_p1 + rand_tam_p1:]):]
+            #Hijo = np.copy(Padre1)                                              # El hijo va a ser una copia del padre 1
+            #vector = 1*(np.random.rand(self.Tam_Individuos) > self.Prob_Cruce)  # Se genera un vector para seleccionar los genes del padre 2
+            #Hijo[np.where(vector==1)[0]] = Padre2[np.where(vector==1)[0]]       # Los genes seleccionados del padre 2 pasan al hijo
             if(self.Comprobacion_Individuo_Viajante(Hijo)):                    # Se comprueba si hay que reparar el hijo
                  Hijo = self.Reparacion_Viajante(Hijo)
+            if np.random.rand() < self.Prob_Mutacion:                           # Se comprueba si el hijo va a mutar
+                Hijo = self.Mutacion_Viajante(Hijo, Num_Max)
+                Hijo = dos_opt(Hijo)    #Aplicamos Local Search
             poblacion = np.insert(poblacion,self.Num_Padres+i,Hijo, axis = 0)   # Se añade a la población una vez que ha mutado y se ha reparado
         return poblacion
+
+    def Mutacion_Viajante (self, individuo, Num_Max=None):
+        rand_circle = np.random.randint(1, Num_Max)  # Número de rotaciones por solución
+        individuo = np.hstack((individuo[rand_circle:], individuo[:rand_circle]))
+        #aux = random.sample(list(np.arange(Num_Max)),2)                        # Se generan 2 números aleatorios para ver las posiciones que mutan
+        #individuo[aux[0]], individuo[aux[1]] = individuo[aux[1]], individuo[aux[0]]     #Intercambiamos posiciones
+        return individuo
 
     def Mutacion (self, individuo, Num_Max=None):                                
         aux1 = np.random.randint(0, individuo.shape[0])                         # Se genera número aleatorio para ver la posición que muta
@@ -277,16 +299,16 @@ def Distancia_Base_Supply_Depot_2D(base, supply):
         x_base, y_base = base
         dist = math.sqrt((x_base - x_supply) ** 2 + (y_base - y_supply) ** 2)
     return dist
-def Funcion_Fitness(distancias, poblacion):
-    lista_fitness = []
-    for i in range(len(poblacion)):    #Aplicamos la función fitness a cada solución
-        fitness = 0
-        for j in range(numero_bases):
-            SD = poblacion[i][j]    #Saco el SD asociado a una base de la población
-            fitness += distancias[SD][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
-        fitness = fitness/numero_bases
-        lista_fitness.append(fitness)
-    return lista_fitness
+def Funcion_Fitness(distancias, individuo):
+    fitness = 0
+    indices_orden = list(np.argsort(individuo))  # Sacamos el orden de los índices para verlos de forma consecutiva
+    for j in range(len(indices_orden) - 1):
+        k = j + 1
+        fitness += distancias[indices_orden[j]][indices_orden[k]]  # Calculo fitness buscando en la matriz de distancias la distancia asociada
+    #fitness += dist[SD][indices[indices_orden[0]]]
+    #fitness += dist[SD][indices[indices_orden[len(indices_orden) - 1]]]  # Sumamos distancia del camino de vuelta
+    fitness = fitness / len(individuo)
+    return fitness
 
 def Funcion_Fitness_Viajante(distancias, dist, poblacion, pob, indices):
     lista_fitness = []
@@ -304,6 +326,25 @@ def Funcion_Fitness_Viajante(distancias, dist, poblacion, pob, indices):
         lista_fitness.append(fitness)
     return lista_fitness
 
+def dos_opt(individuo):    #Mecanismo para hacer Local Search (Cambiamos 2 nodos no adyacentes e invertimos la ruta entre ellos sólo)
+    best = individuo.copy()
+    if len(individuo) == 2: #Caso extremo de 2 bases para un intermediario
+        return individuo
+    improved = True
+    while improved:
+        improved = False
+        for i in range(1, len(individuo) - 1):
+            for j in range(i + 1, len(individuo)):
+                if j - i == 1:  #Evitamos nodos adyacentes
+                    continue
+                individuo_aux = individuo.copy()
+                individuo_aux[i:j] = individuo[j - 1:i - 1:-1]  #Invertimos el orden entre esas 2 subrutas
+                if Funcion_Fitness(dist_bases_list_SD, individuo_aux) < Funcion_Fitness(dist_bases_list_SD, individuo):
+                    best = individuo_aux
+                    improved = True
+        individuo = best.copy()
+    return best
+
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
     Num_Individuos = 100
@@ -319,10 +360,10 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
         f"Bases_SD.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
         f"Cap_Bases_SD.csv")
     Ruta_Solucion = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
@@ -373,8 +414,8 @@ if __name__ == "__main__":
     Sol_Final = np.array(Sol_Final)
 
     ### AQUÍ COMIENZA EL PROBLEMA DEL VIAJANTE
-    Individuos = 100
-    Generaciones = 500
+    Individuos = 200
+    Generaciones = 1000
     Lista_Sol_Final = []
     Costes_Viajante = 0.0
     Costes_Generacion = []
@@ -391,6 +432,36 @@ if __name__ == "__main__":
             distancia_euclidea_SD = Distancia_Base_Supply_Depot_2D(bases_SD,bases[indices_bases_SD[x]])  # Obtenemos distancias de bases con otra base
             dist_bases_list_SD.append(distancia_euclidea_SD)    #Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
         for j in range(Generaciones):
+            if j % 100 == 0 and j != 0: #Cada 50 generaciones, reinicializamos la población parcialmente para evitar mínimos locales
+                contador = 0
+                idx = np.random.randint(1,len(indices_bases_SD), size=(int(numero_bases*0.25)-1,2))
+                #Swapping
+                for row in idx:
+                    while row[0] == row[1]:
+                        row[1] = np.random.randint(0, len(indices_bases_SD))
+                for row_idx, (idx1,idx2) in enumerate(idx):
+                    Pob_Init[row_idx+1, [idx1, idx2]] = Pob_Init[row_idx+1, [idx2, idx1]]
+                contador += int(numero_bases*0.25)
+                #Block-Swapping
+                rand_tam = np.random.randint(1, len(indices_bases_SD) / 4, size=(int(numero_bases * 0.25)))    #Tamaño aleatorio de 2 bloques/solución
+                idx_2 = np.random.randint(0, len(indices_bases_SD)/2, size=(int(numero_bases * 0.25)))   #Índice de comienzo del primer bloque
+                for x in range(len(idx_2)):
+                    while True:
+                        idx_2_2 = np.random.randint(0,len(indices_bases_SD) - rand_tam[x]) #Elegimos un índice de bloque que no solape con el primero
+                        if (idx_2[x] + rand_tam[x] <= idx_2_2) or (idx_2_2 + rand_tam[x] <= idx_2[x]):
+                            break
+                    copia_bloque = Pob_Init[x + contador][idx_2_2:idx_2_2+rand_tam[x]].copy()
+                    Pob_Init[x + contador][idx_2_2:idx_2_2+rand_tam[x]] = Pob_Init[x + contador][idx_2[x]:idx_2[x]+rand_tam[x]].copy()
+                    Pob_Init[x + contador][idx_2[x]:idx_2[x] + rand_tam[x]] = copia_bloque
+                contador += int(numero_bases*0.25)
+                #Rotación Circular
+                rand_circle = np.random.randint(1, len(indices_bases_SD), size=(int(numero_bases * 0.25)))    #Número de rotaciones por solución
+                for y in range(len(rand_circle)):
+                    Pob_Init[y + contador] = np.hstack((Pob_Init[y + contador][rand_circle[y]:],Pob_Init[y + contador][:rand_circle[y]]))
+                contador += int(numero_bases * 0.25)
+                #Reinicializamos población restante
+                Pob_Init[contador:] = Ev2.PoblacionInicial_Viajante(int(numero_bases*0.25), Tam_Indiv, Num_Orden)
+                Pob_Init[1:int(numero_bases*0.5)] = np.array([dos_opt(elemento) for ind, elemento in enumerate(Pob_Init[1:int(numero_bases*0.5)])]) #2-Opt
             Fitness_Viajante = Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, Pob_Init, Sol_Final,indices_bases_SD)
             Pob_Act, Costes_Viajante = Ev2.Seleccion(Pob_Init, Fitness_Viajante)
             Pob_Init = Ev2.Cruce_Viajante(Pob_Act, Num_Orden)
@@ -409,7 +480,7 @@ if __name__ == "__main__":
     coste.show()
     #Graficamos las rutas óptimas
     colores = ['green', 'magenta', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'black', 'cyan']
-    plt.figure(2,figsize=(10, 6))
+    plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
     for v in range(len(Lista_Sol_Final)):

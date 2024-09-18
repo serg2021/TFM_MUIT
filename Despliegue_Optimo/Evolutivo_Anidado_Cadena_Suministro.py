@@ -476,15 +476,23 @@ def Funcion_Fitness(distancias, poblacion):
     for i in range(len(poblacion)):    #Aplicamos la función fitness a cada solución
         fitness = 0
         for j in range(len(poblacion[i][0])):   #Bucle para recorrer bases que no sean intermediarios
-            SD_base = int(poblacion[i][0][j])    #Saco el SD asociado a una base de la población
-            ind_inter = np.where(poblacion[i][0][ind_intermediarios] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
-            for k in ind_inter: #Comprobamos para esos intermediarios sus distancias con la base elegida
-                distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[k])
-                if distancia_base_inter < distancias[SD_base][j]:   #Si esa distancia es menor que la de la base al SD
-                    fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
-                else:
-                    continue
-            fitness += distancias[SD_base][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
+            SD_base = int(poblacion[i][0][j])  # Saco el SD asociado a una base de la población
+            inter_base = int(poblacion[i][1][j])  # Saco si está asociado a algún intermediario
+            if inter_base == numero_bases:  # Base sin intermediario
+                fitness += distancias[SD_base][j]  # Calculo fitness buscando en la matriz de distancias la distancia asociada
+            else:  # Base con intermediario
+                distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[inter_base])
+                fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
+                fitness += distancias[SD_base][inter_base]  # Calculo fitness buscando en la matriz de distancias la distancia asociada
+            # SD_base = int(poblacion[i][0][j])    #Saco el SD asociado a una base de la población
+            # ind_inter = np.where(poblacion[i][0][ind_intermediarios] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
+            # for k in ind_inter: #Comprobamos para esos intermediarios sus distancias con la base elegida
+            #    distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[k])
+            #    if distancia_base_inter < distancias[SD_base][j]:   #Si esa distancia es menor que la de la base al SD
+            #        fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
+            #    else:
+            #        continue
+            # fitness += distancias[SD_base][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
         fitness = fitness/numero_bases
         lista_fitness.append(fitness)
     return lista_fitness
@@ -506,8 +514,8 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
-        f"Bases_SD.csv")
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        f"Bases_SD_1.csv")
     Ruta_Intermediarios = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
         f"Intermediarios.csv")
@@ -581,16 +589,23 @@ if __name__ == "__main__":
     for i in range(Num_Generaciones):
         print("Generación : " + str(i+1))
         for k in range(Num_Generaciones):   #Bucle para sacar el Fitness de cada escenario
-            supply_depots_escenario = Escenarios[k][-numero_supply_depots:]  # Extraemos los puntos que serán los SD
-            distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases,supply_depots_escenario)  # Obtenemos distancias de bases a supply depots
-            Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots,)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
-            for l in range(Num_Generaciones):
-                Fitness = Funcion_Fitness(distancias_euclideas, Pob_Inicial)
-                Pob_Actual, Costes = Ev1.Seleccion(Pob_Inicial, Fitness)
-                Pob_Inicial = Ev1.Cruce(Pob_Actual, capacidad_bases, numero_supply_depots)  # Aplicamos cruce en las soluciones
             if i == 0:  # Primera generación del evolutivo de fuera
+                supply_depots_escenario = Escenarios[k][-numero_supply_depots:]  # Extraemos los puntos que serán los SD
+                distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases,supply_depots_escenario)  # Obtenemos distancias de bases a supply depots
+                Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases, numero_supply_depots,)  #Poblacion inicial -> 100 posibles soluciones -> PADRES
+                for l in range(Num_Generaciones):
+                    Fitness = Funcion_Fitness(distancias_euclideas, Pob_Inicial)
+                    Pob_Actual, Costes = Ev1.Seleccion(Pob_Inicial, Fitness)
+                    Pob_Inicial = Ev1.Cruce(Pob_Actual, capacidad_bases, numero_supply_depots)  # Aplicamos cruce en las soluciones
                 Lista_Fitness_Escenarios.append(Costes[0])  # Nos quedamos con el mejor fitness del problema específico -> Ese será nuestro fitness para el escenario
             elif k >= Prob_Padres * 10:
+                supply_depots_escenario = Escenarios[k][-numero_supply_depots:]  # Extraemos los puntos que serán los SD
+                distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases,supply_depots_escenario)  # Obtenemos distancias de bases a supply depots
+                Pob_Inicial = Ev1.PoblacionInicial(capacidad_bases, 100, numero_bases,numero_supply_depots, )  # Poblacion inicial -> 100 posibles soluciones -> PADRES
+                for l in range(Num_Generaciones):
+                    Fitness = Funcion_Fitness(distancias_euclideas, Pob_Inicial)
+                    Pob_Actual, Costes = Ev1.Seleccion(Pob_Inicial, Fitness)
+                    Pob_Inicial = Ev1.Cruce(Pob_Actual, capacidad_bases,numero_supply_depots)  # Aplicamos cruce en las soluciones
                 Lista_Fitness_Escenarios[k] = Costes[0]  # Actualizamos los nuevos costes para los nuevos escenarios de la siguiente generación
         Escenarios_Actual, Costes_Escenarios = Ev2.Seleccion(np.array(Escenarios), Lista_Fitness_Escenarios)
         Lista_Fitness_Escenarios = Costes_Escenarios  # Actualizamos costes para siguiente generación
@@ -609,5 +624,8 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',s=60, label='Puntos de Suministro')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
+    plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
     fig.show()

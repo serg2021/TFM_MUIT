@@ -6,8 +6,7 @@ import numpy as np
 from PyCROSL.CoralPopulation import CoralPopulation
 from matplotlib import pyplot as plt
 import pyparsing as pp
-import copy         #DESCOMENTAR PARA TIPOS DE RECURSOS
-# import json
+import copy
 
 
 class CRO_SL:
@@ -222,19 +221,19 @@ class CRO_SL:
             stack_pop_matrix = np.array(lista_flatten).reshape([-1,1])
             np.savetxt(population_file, stack_pop_matrix, delimiter=',')
         else:
-            #stack_pop_matrix = np.hstack(pop_matrix)                           #DESCOMENTAR PARA CADENA DE SUMINISTRO
-            #np.savetxt(population_file, stack_pop_matrix, delimiter=',')       #DESCOMENTAR PARA CADENA DE SUMINISTRO
-            np.savetxt(population_file, pop_matrix, delimiter=',')
+            stack_pop_matrix = np.hstack(pop_matrix)                           #DESCOMENTAR PARA CADENA DE SUMINISTRO
+            np.savetxt(population_file, stack_pop_matrix, delimiter=',')       #DESCOMENTAR PARA CADENA DE SUMINISTRO
+            #np.savetxt(population_file, pop_matrix, delimiter=',')             #DESCOMENTAR PARA EL RESTO
 
         np.savetxt(history_file, self.history)
-        #self.stack_sol_history = np.hstack(self.sol_history)               #DESCOMENTAR PARA CADENA DE SUMINISTRO
-        #np.savetxt(indiv_history, self.stack_sol_history)                  #DESCOMENTAR PARA CADENA DE SUMINISTRO
+        self.stack_sol_history = np.hstack(self.sol_history)               #DESCOMENTAR PARA CADENA DE SUMINISTRO
+        np.savetxt(indiv_history, self.stack_sol_history)                  #DESCOMENTAR PARA CADENA DE SUMINISTRO
         if isinstance(self.sol_history, list):          #PARA TIPOS DE RECURSOS
             sol_history = list(flatten(self.sol_history))
             sol_history_2 = np.array(sol_history).reshape([-1, 1])
             np.savetxt(indiv_history, sol_history_2, delimiter=',')
-        else:
-            np.savetxt(indiv_history, self.sol_history)
+        #else:                                               #DESCOMENTAR PARA EL RESTO
+         #   np.savetxt(indiv_history, self.sol_history)    #DESCOMENTAR PARA EL RESTO
 
         if self.dynamic:
             prob_data = np.array(self.population.substrate_w_history)

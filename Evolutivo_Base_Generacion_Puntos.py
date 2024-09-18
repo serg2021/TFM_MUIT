@@ -232,7 +232,7 @@ if __name__ == "__main__":
     Num_Individuos = 100
     Num_Generaciones = 20
     Tam_Individuos = 200
-    Prob_Padres = 0.1
+    Prob_Padres = 0.5
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 

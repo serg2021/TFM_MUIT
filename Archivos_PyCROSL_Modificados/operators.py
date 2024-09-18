@@ -6,7 +6,7 @@ import numpy as np
 import scipy as sp
 import scipy.stats
 
-numero_supply_depots = 30   #DESCOMENTAR PARA TIPOS DE RECURSOS
+numero_supply_depots = 10   #PONER VALOR PARA TIPOS DE RECURSOS B
 
 def xorMask(vector, n, mode="byte"):
     """
@@ -177,11 +177,11 @@ def mutate_sample(vector, population, params):
             ind_vec += 1
         return vector
     else:
-        #mask_pos = np.hstack([np.ones(n), np.zeros(vector.shape[1] - n)]).astype(bool)     #DESCOMENTAR PARA CADENA DE SUMINISTRO
-        if vector.size < n:    #Si el número de muestras a mutar es mayor que el tamaño de la solución -> No mutamos
-            return vector
-        else:
-            mask_pos = np.hstack([np.ones(n), np.zeros(vector.size - n)]).astype(bool)
+        mask_pos = np.hstack([np.ones(n), np.zeros(vector.shape[1] - n)]).astype(bool)     #DESCOMENTAR PARA CADENA DE SUMINISTRO
+        #if vector.size < n:    #Si el número de muestras a mutar es mayor que el tamaño de la solución -> No mutamos   -> #DESCOMENTAR PARA EL RESTO
+        #    return vector          #DESCOMENTAR PARA EL RESTO
+        #else:                      #DESCOMENTAR PARA EL RESTO
+        #    mask_pos = np.hstack([np.ones(n), np.zeros(vector.size - n)]).astype(bool)  #DESCOMENTAR PARA EL RESTO
         np.random.shuffle(mask_pos)
 
         popul_matrix = np.vstack([i.solution for i in population])
@@ -189,8 +189,8 @@ def mutate_sample(vector, population, params):
         std = np.maximum(popul_matrix.std(axis=0)[mask_pos], 1e-6) * strength  # ensure there will be some standard deviation
         rand_vec = sampleDistribution(method, n, mean, std, low, up)
         rand_vec = np.array(rand_vec, dtype=int)
-        #vector[0][mask_pos] = rand_vec     #DESCOMENTAR PARA CADENA DE SUMINISTRO
-        vector[mask_pos] = rand_vec
+        vector[0][mask_pos] = rand_vec     #DESCOMENTAR PARA CADENA DE SUMINISTRO
+        #vector[mask_pos] = rand_vec       #DESCOMENTAR PARA EL RESTO
         return vector
 
 def rand_noise(vector, params):
@@ -343,12 +343,12 @@ def crossMp(vector1, vector2):
         return aux
 
     else:
-        #mask_pos = 1 * (np.random.rand(vector1.shape[1]) > 0.5)    #DESCOMENTAR PARA CADENA DE SUMINISTRO
-        mask_pos = 1 * (np.random.rand(vector1.size) > 0.5)
+        mask_pos = 1 * (np.random.rand(vector1.shape[1]) > 0.5)    #DESCOMENTAR PARA CADENA DE SUMINISTRO
+        #mask_pos = 1 * (np.random.rand(vector1.size) > 0.5)        #DESCOMENTAR PARA EL RESTO
         aux = np.copy(vector1)
 
-        #aux[0][mask_pos == 1] = vector2[0][mask_pos == 1]          #DESCOMENTAR PARA CADENA DE SUMINISTRO
-        aux[mask_pos == 1] = vector2[mask_pos == 1]
+        aux[0][mask_pos == 1] = vector2[0][mask_pos == 1]          #DESCOMENTAR PARA CADENA DE SUMINISTRO
+        #aux[mask_pos == 1] = vector2[mask_pos == 1]                #DESCOMENTAR PARA EL RESTO
         return aux
 
 
@@ -905,10 +905,10 @@ def DEBest1(vector, population, F, CR):
             r1, r2 = random.sample(population, 2)
 
             v = best.solution + F * (r1.solution - r2.solution)
-            #mask_pos = np.random.random(vector.shape[1]) <= CR     #DESCOMENTAR PARA CADENA DE SUMINISTRO
-            #vector[0][mask_pos] = v[0][mask_pos]                   #DESCOMENTAR PARA CADENA DE SUMINISTRO
-            mask_pos = np.random.random(vector.shape) <= CR
-            vector[mask_pos] = v[mask_pos]
+            mask_pos = np.random.random(vector.shape[1]) <= CR     #DESCOMENTAR PARA CADENA DE SUMINISTRO
+            vector[0][mask_pos] = v[0][mask_pos]                   #DESCOMENTAR PARA CADENA DE SUMINISTRO
+            #mask_pos = np.random.random(vector.shape) <= CR        #DESCOMENTAR PARA EL RESTO
+            #vector[mask_pos] = v[mask_pos]                         #DESCOMENTAR PARA EL RESTO
         return vector
 
 

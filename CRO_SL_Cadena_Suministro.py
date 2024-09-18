@@ -27,7 +27,7 @@ class Fitness(AbsObjectiveFunc):
 
     def repair_solution(self, solution):    #Reparación de individuos
         for i in range(numero_bases):
-            if solution[0][i] > 9 or solution[0][i] < 0:
+            if solution[0][i] > numero_supply_depots-1 or solution[0][i] < 0:
                 solution[0][i] = np.random.randint(0, numero_supply_depots)
         if (Comprobacion_Individuo(solution, capacidad_bases, distancias_euclideas)):
             solution = Reparacion_Mayor_Menor(solution, capacidad_bases, distancias_euclideas)
@@ -68,16 +68,23 @@ def Funcion_Fitness(distancias, individuo):
     fitness = 0
     for j in range(len(individuo[0])):   #Bucle para recorrer bases que no sean intermediarios
         SD_base = individuo[0][j]    #Saco el SD asociado a una base de la población
-        if(SD_base > 9 or SD_base < 0 or isinstance(SD_base, float)):   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
+        if(SD_base > numero_supply_depots-1 or SD_base < 0 or isinstance(SD_base, float)):   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
             SD_base = np.random.randint(0,numero_supply_depots)                                   # Se genera el número a modificar
-        ind_inter = np.where(individuo[0][ind_intermediarios] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
-        for k in ind_inter: #Comprobamos para esos intermediarios sus distancias con la base elegida
-            distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[k])
-            if distancia_base_inter < distancias[SD_base][j]:   #Si esa distancia es menor que la de la base al SD
-                fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
-            else:
-                continue
-        fitness += distancias[SD_base][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
+        inter_base = int(individuo[1][j])  # Saco si está asociado a algún intermediario
+        if inter_base == numero_bases:  # Base sin intermediario
+            fitness += distancias[SD_base][j]  # Calculo fitness buscando en la matriz de distancias la distancia asociada
+        else:  # Base con intermediario
+            distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[inter_base])
+            fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
+            fitness += distancias[SD_base][inter_base]  # Calculo fitness buscando en la matriz de distancias la distancia asociada
+        #ind_inter = np.where(individuo[0][ind_intermediarios] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
+        #for k in ind_inter: #Comprobamos para esos intermediarios sus distancias con la base elegida
+        #    distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[k])
+        #    if distancia_base_inter < distancias[SD_base][j]:   #Si esa distancia es menor que la de la base al SD
+        #        fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
+        #    else:
+        #        continue
+        #fitness += distancias[SD_base][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
     fitness = fitness/numero_bases
     return fitness
 
@@ -263,22 +270,24 @@ def Reparacion_Mayor_Menor (individuo, capacidades, distancias): #Sustituimos un
 
 if __name__ == "__main__":
 
+    random.seed(2030)
+    np.random.seed(2030)
     Pob_Actual = []
     Lista_Bases_Actual = []
     Costes = []
     poblacion_inicial = 100
     numero_bases = 200
     numero_supply_depots = 10
-    capacidad_maxima = 15
+    capacidad_maxima = 18
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
-        f"Bases_SD.csv")
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        f"Bases_SD_1.csv")
     Ruta_Intermediarios = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
-        f"Intermediarios.csv")
+        f"Intermediarios_1.csv")
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
-        f"Cap_Bases_SD.csv")
+        f"Cap_Bases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         puntos = np.array(puntos)
@@ -310,8 +319,8 @@ if __name__ == "__main__":
     intermediarios = [bases[i] for i in ind_intermediarios]
     ind_bases_antes = np.array([i for i, elemento in enumerate(bases) if elemento not in intermediarios])
     bases = list(set(bases) - set(intermediarios))  #Actualizamos el número de bases sin contar intermediarios
-    longitudes_bases, latitudes_bases = zip(*bases)
-    longitudes_inter, latitudes_inter = zip(*intermediarios)
+    latitudes_bases, longitudes_bases = zip(*bases)
+    latitudes_inter, longitudes_inter = zip(*intermediarios)
     if not os.path.exists(Ruta_Capacidades):
         capacidad_bases[ind_bases_antes] = np.random.randint(1, capacidad_maxima, size=len(bases))
         capacidad_bases[ind_intermediarios] = np.random.randint(10, capacidad_maxima, size=len(intermediarios))
@@ -330,7 +339,7 @@ if __name__ == "__main__":
     #capacidad_bases = np.concatenate((capacidad_bases, capacidad_inters))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     bases_inter = puntos[:numero_bases] #Recuperamos datos de bases e intermediarios
-    longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
     distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases_inter, supply_depots) #Obtenemos distancias de bases a supply depots
@@ -342,16 +351,16 @@ if __name__ == "__main__":
         "popSize": poblacion_inicial, #Población inicial
         "rho": 0.6, #Porcentaje de ocupación de corales del Reef inicial
         "Fb": 0.98, #Proporción de Broadcast Spawning
-        "Fd": 0.2,  #Proporción de Depredación
+        "Fd": 0.5,  #Proporción de Depredación
         "Pd": 0.8,  #Probabilidad de Depredación
         "k": 3, #Número máximo de intentos para que la larva intente asentarse
         "K": 20,    #Número máximo de corales con soluciones duplicadas
         "group_subs": True, #Si 'True', los corales se reproducen sólo en su mismo substrato, si 'False', se reproducen con toda la población
 
-        "stop_cond": "Ngen",   #Condición de parada
+        "stop_cond": "Neval",   #Condición de parada
         "time_limit": 4000.0,   #Tiempo límite (real, no de CPU) de ejecución
-        "Ngen": 100,  #Número de generaciones
-        "Neval": 5100,   #Número de evaluaciones de la función objetivo
+        "Ngen": 300,  #Número de generaciones
+        "Neval": 15050,   #Número de evaluaciones de la función objetivo
         "fit_target": 50,   #Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 
         "verbose": True,    #Informe periódico de cómo va el algoritmo
@@ -362,14 +371,14 @@ if __name__ == "__main__":
         "dyn_method": "success",    #Determina la probabilidad de elegir un substrato para cada coral en la siguiente generación -> Con 'success' usa el ratio de larvas exitosas en cada generación
         "dyn_metric": "best",    #Determina cómo agregar los valores de cada substrato para obtener la medida de cada uno
         "dyn_steps": 10,    #Número de evaluaciones por cada substrato
-        "prob_amp": 0.001    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
+        "prob_amp": 0.01    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
     }
 
     operators = [
         SubstrateInt("MutSample", {"method": "Gauss", "F": 1, "N": 3}),  # Rand Mutation -> F = Desviación Típica; N = Número de muestras a mutar
         SubstrateInt("Multipoint"),    #Multi-Point Crossover
-        SubstrateInt("BLXalpha", {"F": 0.5}),  #BLX-Alpha -> F = Alpha
-        SubstrateInt("DE/best/1", {"F": 0.7, "Cr": 0.8})   #Differential Evolution -> F = Factor de escalado de la ecuación; Cr = Prob. de Recombinación
+        #SubstrateInt("BLXalpha", {"F": 0.5}),  #BLX-Alpha -> F = Alpha
+        #SubstrateInt("DE/best/1", {"F": 0.7, "Cr": 0.8})   #Differential Evolution -> F = Factor de escalado de la ecuación; Cr = Prob. de Recombinación
     ]
 
     Coral = CRO_SL(objfunc,operators,params)
@@ -385,9 +394,9 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60, label='Puntos de Suministro')
     fig.show()
-    #Evolución del coste
+    # Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
     plt.plot(Coral.history)
     coste.show()
@@ -395,9 +404,9 @@ if __name__ == "__main__":
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60, label='Puntos de Suministro')
     bases = puntos[:numero_bases]
-    longitudes_bases, latitudes_bases = zip(*bases)
+    latitudes_bases, longitudes_bases = zip(*bases)
     for v in range(len(ind_intermediarios)):
         if isinstance(solution[1], float):
             solution[1] = list(np.zeros(numero_bases))
@@ -412,8 +421,8 @@ if __name__ == "__main__":
                 if SD[l] in ind_intermediarios:
                     plt.plot([longitudes_bases[SD[l]], longitudes_supply_depots[solution[0][SD[l]]]],
                              [latitudes_bases[SD[l]], latitudes_supply_depots[solution[0][SD[l]]]], color='red')
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
     plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    plt.gca().invert_yaxis()
     plt.show()

@@ -291,15 +291,16 @@ def Distancia_Base_Supply_Depot_3D(base,supply, dem):    #Bases y SDs como coord
 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
+    random.seed(2026)
     Num_Individuos = 100
     Num_Generaciones = 100
     Tam_Individuos = 200
-    Prob_Padres = 0.1
+    Prob_Padres = 0.5
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
     mapa_dem = 'PNOA_MDT05_ETRS89_HU30_0560_LID.tif'
-    puntos_interpolado = 25  # Necesarios para calcular la distancia entre puntos en el mapa en 3D
+    puntos_interpolado = 50  # Necesarios para calcular la distancia entre puntos en el mapa en 3D
     distGrid = 1
     # Definir el sistema de coordenadas UTM y WGS84
     crs_utm = CRS.from_epsg(25830)  # EPSG:25830 es UTM zona 30N, ETRS89 (Sistema de referencia geodésica para Europa, propio de este tipo de UTM [EPSG:25830])
@@ -420,7 +421,7 @@ if __name__ == "__main__":
     # Graficar el mapa y los puntos
     fig_1 = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases_2, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots_2, color='black', marker='p',label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots_2, color='black', marker='p', s=60, label='Puntos de Suministro')
     fig_1.show()
     # Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
@@ -432,14 +433,13 @@ if __name__ == "__main__":
     plt.imshow(dem_data, cmap='terrain')
     plt.colorbar(label='Altura (m)')
     plt.scatter(longitudes_bases, latitudes_bases, color='white', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60, label='Puntos de Suministro')
     for k in range(numero_supply_depots):
         SD = [i for i,v in enumerate(Sol_Final) if v == k]  #Sacamos bases asociadas a un SD
         if len(SD) > 0: # Porque puede haber bases que no tengan asociado el SD de la iteración que toca
             aux = random.choice(SD)  # Base aleatoria
             plt.plot([longitudes_bases[aux],longitudes_supply_depots[Sol_Final[aux]]], [latitudes_bases[aux], latitudes_supply_depots[Sol_Final[aux]]],color='red')
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
     plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
     plt.show()

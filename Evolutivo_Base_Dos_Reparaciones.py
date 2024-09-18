@@ -226,6 +226,8 @@ def Funcion_Fitness(distancias, poblacion):
 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
+    random.seed(2030)
+    np.random.seed(2030)
     Num_Individuos = 100
     Num_Generaciones = 500
     Tam_Individuos = 200
@@ -240,10 +242,10 @@ if __name__ == "__main__":
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
-        f"Bases_SD.csv")
+        f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
-        f"Cap_Bases_SD.csv")
+        f"Cap_Bases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         puntos = np.array(puntos)
@@ -259,7 +261,7 @@ if __name__ == "__main__":
                 puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    longitudes_bases, latitudes_bases = zip(*bases)
+    latitudes_bases, longitudes_bases = zip(*bases)
     if not os.path.exists(Ruta_Capacidades):
         capacidad_bases = np.random.randint(1, capacidad_maxima, size=(numero_bases))
         np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
@@ -273,7 +275,7 @@ if __name__ == "__main__":
                 capacidad_bases.append(int(numbers))
             capacidad_bases = np.array(capacidad_bases)
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
     distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
@@ -305,13 +307,13 @@ if __name__ == "__main__":
     print("Coste de la solución: " + str(Coste_Final))
     Ruta_Solucion = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
-        f"Solucion.csv")
+        f"Solucion_1.csv")
     np.savetxt(Ruta_Solucion, Sol_Final, delimiter=',') #Guardamos la solución para el problema del viajante
 
     # Graficar el mapa y los puntos
     fig_1 = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60, label='Puntos de Suministro')
     fig_1.show()
     # Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
@@ -320,11 +322,11 @@ if __name__ == "__main__":
     # Graficamos solución
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',s=60 , label='Puntos de Suministro')
     for k in range(Tam_Individuos):
         plt.plot([longitudes_bases[k],longitudes_supply_depots[Sol_Final[k]]], [latitudes_bases[k], latitudes_supply_depots[Sol_Final[k]]],color='red')
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
     plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    plt.gca().invert_yaxis()
     plt.show()

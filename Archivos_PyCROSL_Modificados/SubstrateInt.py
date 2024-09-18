@@ -4,7 +4,7 @@ import numpy as np
 from PyCROSL.operators import *
 from PyCROSL.Substrate import *
 
-numero_supply_depots = 30       #DESCOMENTAR PARA TIPOS DE RECURSOS
+numero_supply_depots = 10       #PONER VALOR PARA TIPOS DE RECURSOS B
 
 class SubstrateInt(Substrate):
     """
@@ -30,7 +30,7 @@ class SubstrateInt(Substrate):
         params = copy.deepcopy(self.params)
 
         if "Cr" in params and "N" not in params:
-            params["N"] = np.count_nonzero(np.random.random(solution.solution.size) < params["Cr"])
+            params["N"] = np.count_nonzero(np.random.random(solution.solution.size) < params["Cr"])    #DESCOMENTAR PARA EL RESTO
             #params["N"] = np.count_nonzero(np.random.random(len(solution.solution[0])) < params["Cr"])  #DESCOMENTAR PARA TIPOS DE RECURSOS
 
         if "N" in params:

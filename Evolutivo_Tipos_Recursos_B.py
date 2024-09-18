@@ -11,6 +11,7 @@ import random
 import math
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import rasterio
 import copy
 import os
 import csv
@@ -271,8 +272,13 @@ class EvolutiveClass:
                                             for i in f:
                                                 if isinstance(individuo[i], list):  #Si es una sublista, buscamos índice donde esté el valor de ese SD
                                                     indice = [j for j,v in enumerate(individuo[i]) if v == SD_ind]
-                                                    individuo[i][indice] = k_3  #Lo cambiamos por el otro SD
-                                                    asig[i][indice] = k_3
+                                                    if len(indice) == 1:
+                                                        individuo[i][indice[0]] = k_3  #Lo cambiamos por el otro SD
+                                                        asig[i][indice[0]] = k_3
+                                                    else:
+                                                        indi = random.choice(indice)
+                                                        individuo[i][indi] = k_3  # Lo cambiamos por el otro SD
+                                                        asig[i][indi] = k_3
                                                 else:
                                                     individuo[i] = k_3  # ... Descargamos algunas bases del SD que nos da problemas sobre el otro (k_3)
                                                     indice_asig = [j for j, v in enumerate(asig[i]) if v != numero_supply_depots]
@@ -360,7 +366,7 @@ class EvolutiveClass:
                                 comprob_asig_1 = [i for i, v in enumerate(asig[indice_base_1]) if v == SD_ind]
                                 # Si al actualizar la asignación sigue estando el SD que estamos analizando -> No hacemos nada
                                 # Sin embargo, si ya no aparece, tenemos que quitarlo de la lista
-                                if len(comprob_asig_1) == 0:
+                                if len(comprob_asig_1) == 0 and SD_ind in individuo[indice_base_1]:
                                     ind_cambio = individuo[indice_base_1].index(SD_ind)
                                     individuo[indice_base_1].pop(ind_cambio)  # Le quitamos ese SD
                                 individuo[indice_base_1].append(k_3)  # Le añadimos el nuevo SD SIEMPRE
@@ -370,7 +376,7 @@ class EvolutiveClass:
                                 comprob_asig_2 = [i for i, v in enumerate(asig[indice_base_aleatoria_2]) if v == k_3]
                                 # Si al actualizar la asignación sigue estando el SD que estamos analizando -> No hacemos nada
                                 # Sin embargo, si ya no aparece, tenemos que quitarlo de la lista
-                                if len(comprob_asig_2) == 0:
+                                if len(comprob_asig_2) == 0 and k_3 in individuo[indice_base_aleatoria_2]:
                                     ind_cambio = individuo[indice_base_aleatoria_2].index(k_3)
                                     individuo[indice_base_aleatoria_2].pop(ind_cambio)  # Le quitamos ese SD
                                 individuo[indice_base_aleatoria_2].append(SD_ind)  # Le añadimos el nuevo SD SIEMPRE
@@ -380,7 +386,7 @@ class EvolutiveClass:
                                 if asig[indice_base_1][k_1] != numero_supply_depots:
                                     asig[indice_base_1][k_1] = individuo[indice_base_aleatoria_2]
                                     comprob_asig_1 = [i for i, v in enumerate(asig[indice_base_1]) if v == SD_ind]
-                                    if len(comprob_asig_1) == 0:
+                                    if len(comprob_asig_1) == 0 and SD_ind in individuo[indice_base_1]:
                                         ind_cambio = individuo[indice_base_1].index(SD_ind)
                                         individuo[indice_base_1].pop(ind_cambio)  # Le quitamos ese SD
                                     individuo[indice_base_1].append(individuo[indice_base_aleatoria_2])
@@ -397,7 +403,7 @@ class EvolutiveClass:
                                 if asig[indice_base_aleatoria_2][k_1] != numero_supply_depots:
                                     asig[indice_base_aleatoria_2][k_1] = individuo[indice_base_1]
                                     comprob_asig_2 = [i for i, v in enumerate(asig[indice_base_aleatoria_2]) if v == k_3]
-                                    if len(comprob_asig_2) == 0:
+                                    if len(comprob_asig_2) == 0 and k_3 in individuo[indice_base_aleatoria_2]:
                                         ind_cambio = individuo[indice_base_aleatoria_2].index(k_3)
                                         individuo[indice_base_aleatoria_2].pop(ind_cambio)  # Le quitamos ese SD
                                     individuo[indice_base_aleatoria_2].append(individuo[indice_base_1])
@@ -454,14 +460,16 @@ class EvolutiveClass:
 
 def Puntos_Sin_Repetir(num_points, offset=0.5):
     points = set()  # Usamos un conjunto para evitar duplicados
-    while len(points) < num_points:
-        latitud = np.random.uniform(low=0, high=180.0)
-        longitud = np.random.uniform(low=0, high=180.0)
-        # Aplicar desplazamiento aleatorio para evitar superposiciones
-        latitud_offset = np.random.uniform(low=-offset, high=offset)
-        longitud_offset = np.random.uniform(low=-offset, high=offset)
-        point_with_offset = (latitud + latitud_offset, longitud + longitud_offset)
-        points.add(point_with_offset)  # Agregamos el punto al conjunto
+    mapa_dem = 'PNOA_MDT05_ETRS89_HU30_0560_LID.tif'
+    with rasterio.open(mapa_dem) as dem:
+        while len(points) < num_points:
+            latitud = np.random.uniform(low=0, high=dem.height)
+            longitud = np.random.uniform(low=0, high=dem.width)
+            # Aplicar desplazamiento aleatorio para evitar superposiciones
+            latitud_offset = np.random.uniform(low=-offset, high=offset)
+            longitud_offset = np.random.uniform(low=-offset, high=offset)
+            point_with_offset = (latitud + latitud_offset, longitud + longitud_offset)
+            points.add(point_with_offset)  # Agregamos el punto al conjunto
     return points
 
 def Distancia_Base_Supply_Depot_2D(base, supply):
@@ -501,10 +509,12 @@ def Funcion_Fitness(distancias, poblacion):
 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
+    random.seed(2030)
+    np.random.seed(2030)
     Num_Individuos = 100
-    Num_Generaciones = 100
+    Num_Generaciones = 300
     Tam_Individuos = 200
-    Prob_Padres = 0.1
+    Prob_Padres = 0.5
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
@@ -516,19 +526,19 @@ if __name__ == "__main__":
     numero_clases = 5
     Ruta_Puntos = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
-        f"Bases_SD.csv")
+        f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
-        f"Cap_Bases.csv")
+        f"Cap_Bases_SD_1.csv")
     Ruta_Clases_Bases = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
-        f"Clases_Bases.csv")
+        f"Clases_Bases_1.csv")
     Ruta_Caps_Clases_Bases = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
-        f"Caps_Clases_Bases.csv")
+        f"Caps_Clases_Bases_1.csv")
     Ruta_Caps_Clases_SD = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_B',
-        f"Caps_Clases_SD.csv")
+        f"Caps_Clases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         puntos = np.array(puntos)
@@ -544,7 +554,7 @@ if __name__ == "__main__":
                 puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    longitudes_bases, latitudes_bases = zip(*bases)
+    latitudes_bases, longitudes_bases = zip(*bases)
     if not os.path.exists(Ruta_Capacidades):
         capacidad_bases = np.random.randint(1, capacidad_maxima, size=len(bases))
         np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
@@ -557,7 +567,7 @@ if __name__ == "__main__":
                 numbers = float(fila[0])
                 capacidad_bases.append(int(numbers))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = list(np.full(numero_supply_depots,200))
 
     clases = ['A', 'B', 'C', 'D', 'E']
@@ -672,7 +682,8 @@ if __name__ == "__main__":
     # Graficar el mapa y los puntos
     fig_1 = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60,label='Puntos de Suministro')
+    plt.gca().invert_yaxis()
     fig_1.show()
     #Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
@@ -682,7 +693,7 @@ if __name__ == "__main__":
     colores = ['green', 'blue', 'red', 'orange', 'purple']  #Lista de colores para cada tipo de recurso
     fig = plt.figure(figsize=(10, 6))
     ejes = fig.add_subplot(111) #Creamos ejes en la figura (1 fila, 1 columna y 1 cuadrícula) -> Necesarios para dibujar los puntos multicolor
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60, label='Puntos de Suministro')
     for k in range(numero_supply_depots):
         SD = []
         for j, value in enumerate(Sol_Final):   #Obtenemos lista de índices de las bases de la solución que tienen el SD asociado
@@ -700,10 +711,10 @@ if __name__ == "__main__":
             angulo_color = 360/len(lista_colores)
             for s, color in enumerate(lista_colores):
                 angulo_inicio = s*angulo_color
-                seccion_circulo = patches.Wedge((longitudes_bases[t],latitudes_bases[t]),2,angulo_inicio,angulo_inicio+angulo_color, color=color)
+                seccion_circulo = patches.Wedge((longitudes_bases[t],latitudes_bases[t]),50,angulo_inicio,angulo_inicio+angulo_color, color=color)
                 ejes.add_patch(seccion_circulo)
-        ejes.set_xlim(-5, 185)  # Limitar el eje x de 0 a 180
-        ejes.set_ylim(-5, 185)  # Limitar el eje y de 0 a 180
+        #ejes.set_xlim(-5, 185)  # Limitar el eje x de 0 a 180
+        #ejes.set_ylim(-5, 185)  # Limitar el eje y de 0 a 180
         ejes.set_aspect('equal')    #Para que los puntos multicolor no queden ovalados, sino circulares
         if len(SD) > 0: #Porque puede haber bases que no tengan asociado el SD de la iteración que toca
             aux = random.choice(SD) #Punto del que saldrán las líneas a los SD
@@ -714,8 +725,8 @@ if __name__ == "__main__":
                 plt.plot([longitudes_bases[aux], longitudes_supply_depots[Sol_Final[aux]]],[latitudes_bases[aux], latitudes_supply_depots[Sol_Final[aux]]], color='red')
         else:
             continue
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
     plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    plt.gca().invert_yaxis()
     plt.show()

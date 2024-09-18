@@ -109,7 +109,7 @@ class EvolutiveClass:
             ind_orden_p2 = np.array(ind_orden_p2, dtype=int)  # Lo pasamos a array
             if rand_ind_p1 + rand_tam_p1 == Num_Max:  # Caso extremo -> La ventana llega justo al final de la solución
                 Hijo[:rand_ind_p1] = ind_orden_p2
-            elif rand_ind_p1 == 0:  # Caso extremo -> La ventana conmienza desde el principio de la solución
+            elif rand_ind_p1 == 0:  # Caso extremo -> La ventana comienza desde el principio de la solución
                 Hijo[rand_ind_p1 + rand_tam_p1:] = ind_orden_p2  # Desde la izquierda de la ventana ponemos en orden los valores que ha encontrado en Padre2
             else:
                 Hijo[rand_ind_p1 + rand_tam_p1:] = ind_orden_p2[:len(Hijo[rand_ind_p1 + rand_tam_p1:])]  # Desde la izquierda de la ventana ponemos en orden los valores que ha encontrado en Padre2
@@ -347,8 +347,10 @@ def dos_opt(individuo):    #Mecanismo para hacer Local Search (Cambiamos 2 nodos
 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
+    random.seed(2036)
+    np.random.seed(2036)
     Num_Individuos = 100
-    Num_Generaciones = 10
+    Num_Generaciones = 500
     Tam_Individuos = 200
     Prob_Padres = 0.5
     Prob_Mutacion = 0.01
@@ -361,13 +363,13 @@ if __name__ == "__main__":
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
-        f"Bases_SD.csv")
+        f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
-        f"Cap_Bases_SD.csv")
+        f"Cap_Bases_SD_1.csv")
     Ruta_Solucion = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
-        f"Solucion.csv")
+        f"Solucion_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         puntos = np.array(puntos)
@@ -383,7 +385,7 @@ if __name__ == "__main__":
                 puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    longitudes_bases, latitudes_bases = zip(*bases)
+    latitudes_bases, longitudes_bases = zip(*bases)
     if not os.path.exists(Ruta_Capacidades):
         capacidad_bases = np.random.randint(1, capacidad_maxima, size=len(bases))
         np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
@@ -397,7 +399,7 @@ if __name__ == "__main__":
                 capacidad_bases.append(int(numbers))
             capacidad_bases = np.array(capacidad_bases)
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
     distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
@@ -415,10 +417,11 @@ if __name__ == "__main__":
 
     ### AQUÍ COMIENZA EL PROBLEMA DEL VIAJANTE
     Individuos = 200
-    Generaciones = 1000
+    Generaciones = 300
     Lista_Sol_Final = []
     Costes_Viajante = 0.0
     Costes_Generacion = []
+    contador_aux = 0.0
     for i in range(numero_supply_depots):
         print("SD: " + str(i))
         indices_bases_SD = [j for j, value in enumerate(Sol_Final) if value == i]   #Sacamos índices de las bases asociadas a un SD
@@ -432,7 +435,7 @@ if __name__ == "__main__":
             distancia_euclidea_SD = Distancia_Base_Supply_Depot_2D(bases_SD,bases[indices_bases_SD[x]])  # Obtenemos distancias de bases con otra base
             dist_bases_list_SD.append(distancia_euclidea_SD)    #Añadimos esas distancias a la lista principal -> Al final obtenemos una diagonal de 0's
         for j in range(Generaciones):
-            if j % 100 == 0 and j != 0: #Cada 50 generaciones, reinicializamos la población parcialmente para evitar mínimos locales
+            if j % 50 == 0 and j != 0: #Cada 50 generaciones, reinicializamos la población parcialmente para evitar mínimos locales
                 contador = 0
                 idx = np.random.randint(1,len(indices_bases_SD), size=(int(numero_bases*0.25)-1,2))
                 #Swapping
@@ -461,29 +464,35 @@ if __name__ == "__main__":
                 contador += int(numero_bases * 0.25)
                 #Reinicializamos población restante
                 Pob_Init[contador:] = Ev2.PoblacionInicial_Viajante(int(numero_bases*0.25), Tam_Indiv, Num_Orden)
-                Pob_Init[1:int(numero_bases*0.5)] = np.array([dos_opt(elemento) for ind, elemento in enumerate(Pob_Init[1:int(numero_bases*0.5)])]) #2-Opt
+                #Pob_Init[1:int(numero_bases*0.5)] = np.array([dos_opt(elemento) for ind, elemento in enumerate(Pob_Init[1:int(numero_bases*0.5)])]) #2-Opt
             Fitness_Viajante = Funcion_Fitness_Viajante(dist_bases_list_SD, distancias_euclideas, Pob_Init, Sol_Final,indices_bases_SD)
             Pob_Act, Costes_Viajante = Ev2.Seleccion(Pob_Init, Fitness_Viajante)
             Pob_Init = Ev2.Cruce_Viajante(Pob_Act, Num_Orden)
             Costes_Generacion.append(Costes_Viajante[0])
         print("Coste Solución SD " + str(i) + ": " + str(Costes_Viajante[0]))
+        contador_aux += Costes_Viajante[0]
         Lista_Sol_Final.append(Pob_Init[0])
+    print("Media Costes SD: " + str(contador_aux/numero_supply_depots))
 
     # Graficar el mapa y los puntos
     fig = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60, label='Puntos de Suministro')
+    plt.gca().invert_yaxis()
     fig.show()
     #Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
-    plt.plot(Costes_Generacion)
+    plt.plot(Costes_Generacion[2700:2999])
     coste.show()
     #Graficamos las rutas óptimas
     colores = ['green', 'magenta', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'black', 'cyan']
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
-    for v in range(len(Lista_Sol_Final)):
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60, label='Puntos de Suministro')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
+    plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    for v in range(len(Lista_Sol_Final)-7):
         color = colores[v % len(colores)]   #Un color por cada iteración
         indices_bases_SD = [j for j, value in enumerate(Sol_Final) if value == v]  # Sacamos índices de las bases asociadas a un SD
         indices_ordenados = list(np.argsort(Lista_Sol_Final[v]))    #Ordenamos índices para unir por rectas 2 puntos consecutivos
@@ -493,8 +502,5 @@ if __name__ == "__main__":
         for k in range(0,len(indices_bases_SD_ordenados)-1): #Bucle que recorre los valores
             plt.plot([longitudes_bases[indices_bases_SD_ordenados[k]], longitudes_bases[indices_bases_SD_ordenados[k+1]]],
                      [latitudes_bases[indices_bases_SD_ordenados[k]], latitudes_bases[indices_bases_SD_ordenados[k+1]]], color=color)
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
-    plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    plt.gca().invert_yaxis()
     plt.show()

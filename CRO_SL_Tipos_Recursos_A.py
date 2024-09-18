@@ -25,7 +25,7 @@ class Fitness(AbsObjectiveFunc):
 
     def repair_solution(self, solution):    #Reparación de individuos
         for i in range(numero_bases):
-            if solution[i] > 9 or solution[i] < 0:
+            if solution[i] > numero_supply_depots-1 or solution[i] < 0:
                 solution[i] = np.random.randint(0, numero_supply_depots)
         if (Comprobacion_Individuo(solution, capacidad_bases)):
             solution = Reparacion_Mayor_Menor(solution, capacidad_bases)
@@ -66,7 +66,7 @@ def Funcion_Fitness(distancias, individuo):
     fitness = 0
     for j in range(len(individuo)):
         SD = individuo[j]    #Saco el SD asociado a una base de la población
-        if(SD > 9 or SD < 0 or isinstance(SD, float)):   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
+        if(SD > numero_supply_depots-1 or SD < 0 or isinstance(SD, float)):   #Está mutando y nos da valores de SD que no pueden ser -> SOLUCIÓN:
             SD = np.random.randint(0,numero_supply_depots)                                   # Se genera el número a modificar
         fitness += distancias[SD][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
     fitness = fitness/numero_bases
@@ -190,26 +190,28 @@ def Reparacion_Mayor_Menor (individuo, capacidades): #Sustituimos una base de un
 
 if __name__ == "__main__":
 
+    random.seed(2030)
+    np.random.seed(2030)
     Pob_Actual = []
     Costes = []
     poblacion_inicial = 100
     Num_Gen = 100
     numero_bases = 200
-    numero_supply_depots = 15
-    capacidad_maxima = 20
-    numero_clases = 5
+    numero_supply_depots = 10
+    capacidad_maxima = 13
+    numero_clases = 3
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
-        f"Bases_SD.csv")
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
-        f"Cap_Bases_SD.csv")
+        f"Cap_Bases_SD_1.csv")
     Ruta_Clases_Bases = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
-        f"Clases_Bases.csv")
+        f"Clases_Bases_1.csv")
     Ruta_Clases_SD = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
-        f"Clases_SD.csv")
+        f"Clases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         puntos = np.array(puntos)
@@ -225,7 +227,7 @@ if __name__ == "__main__":
                 puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    longitudes_bases, latitudes_bases = zip(*bases)
+    latitudes_bases, longitudes_bases = zip(*bases)
     if not os.path.exists(Ruta_Capacidades):
         capacidad_bases = np.random.randint(1, capacidad_maxima, size=len(bases))
         np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
@@ -239,7 +241,7 @@ if __name__ == "__main__":
                 capacidad_bases.append(int(numbers))
             capacidad_bases = np.array(capacidad_bases)
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
     if not os.path.exists(Ruta_Clases_Bases):
@@ -292,16 +294,16 @@ if __name__ == "__main__":
         "popSize": poblacion_inicial, #Población inicial
         "rho": 0.6, #Porcentaje de ocupación de corales del Reef inicial
         "Fb": 0.98, #Proporción de Broadcast Spawning
-        "Fd": 0.2,  #Proporción de Depredación
+        "Fd": 0.5,  #Proporción de Depredación
         "Pd": 0.8,  #Probabilidad de Depredación
         "k": 3, #Número máximo de intentos para que la larva intente asentarse
         "K": 20,    #Número máximo de corales con soluciones duplicadas
         "group_subs": True, #Si 'True', los corales se reproducen sólo en su mismo substrato, si 'False', se reproducen con toda la población
 
-        "stop_cond": "Ngen",   #Condición de parada
+        "stop_cond": "Neval",   #Condición de parada
         "time_limit": 4000.0,   #Tiempo límite (real, no de CPU) de ejecución
         "Ngen": Num_Gen,  #Número de generaciones
-        "Neval": 3e3,   #Número de evaluaciones de la función objetivo
+        "Neval": 15050,   #Número de evaluaciones de la función objetivo
         "fit_target": 50,   #Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 
         "verbose": True,    #Informe periódico de cómo va el algoritmo
@@ -312,14 +314,14 @@ if __name__ == "__main__":
         "dyn_method": "success",    #Determina la probabilidad de elegir un substrato para cada coral en la siguiente generación -> Con 'success' usa el ratio de larvas exitosas en cada generación
         "dyn_metric": "best",    #Determina cómo agregar los valores de cada substrato para obtener la medida de cada uno
         "dyn_steps": 10,    #Número de evaluaciones por cada substrato
-        "prob_amp": 0.001    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
+        "prob_amp": 0.01    #Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
     }
 
     operators = [
         SubstrateInt("MutSample", {"method": "Gauss", "F": 1, "N": 3}),  # Rand Mutation -> F = Desviación Típica; N = Número de muestras a mutar
         SubstrateInt("Multipoint"),    #Multi-Point Crossover
-        SubstrateInt("BLXalpha", {"F": 0.5}),  #BLX-Alpha -> F = Alpha
-        SubstrateInt("DE/best/1", {"F": 0.7, "Cr": 0.8})   #Differential Evolution -> F = Factor de escalado de la ecuación; Cr = Prob. de Recombinación
+        #SubstrateInt("BLXalpha", {"F": 0.5}),  #BLX-Alpha -> F = Alpha
+        #SubstrateInt("DE/best/1", {"F": 0.7, "Cr": 0.8})   #Differential Evolution -> F = Factor de escalado de la ecuación; Cr = Prob. de Recombinación
     ]
 
     Coral = CRO_SL(objfunc,operators,params)
@@ -333,7 +335,7 @@ if __name__ == "__main__":
     # Graficar el mapa y los puntos
     fig = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',s=60,label='Puntos de Suministro')
     fig.show()
     #Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
@@ -342,18 +344,18 @@ if __name__ == "__main__":
     # Graficar solución
     colores = ['green', 'blue', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'magenta', 'cyan', 'violet','lime', 'gold', 'silver', 'indigo']
     plt.figure(figsize=(10, 6))
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60,label='Puntos de Suministro')
     for k in range(numero_supply_depots):
         SD = np.array([i for i, v in enumerate(solution) if v == k])
-        color = colores[k]  # Un color por cada iteración
         for j in range(len(SD)):
+            color = colores[[i for i, valor in enumerate(lista_clases_base[SD[0]]) if valor == 1][0]]
             plt.scatter(longitudes_bases[SD[j]], latitudes_bases[SD[j]], color=color, label='Bases')
         if len(SD) > 0:
             plt.plot([longitudes_bases[SD[0]], longitudes_supply_depots[k]], [latitudes_bases[SD[0]], latitudes_supply_depots[k]], color='red')
         else:
             continue
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
     plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    plt.gca().invert_yaxis()
     plt.show()

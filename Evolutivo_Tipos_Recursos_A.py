@@ -278,31 +278,33 @@ def Funcion_Fitness(distancias, poblacion):
 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
+    random.seed(2030)
+    np.random.seed(2030)
     Num_Individuos = 100
-    Num_Generaciones = 100
+    Num_Generaciones = 300
     Tam_Individuos = 200
-    Prob_Padres = 0.1
+    Prob_Padres = 0.5
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
     Pob_Actual = []
     Costes = []
     numero_bases = 200
-    numero_supply_depots = 15
-    capacidad_maxima = 20
-    numero_clases = 5
+    numero_supply_depots = 10
+    capacidad_maxima = 13
+    numero_clases = 3
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
-        f"Bases_SD.csv")
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
-        f"Cap_Bases_SD.csv")
+        f"Cap_Bases_SD_1.csv")
     Ruta_Clases_Bases = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
-        f"Clases_Bases.csv")
+        f"Clases_Bases_1.csv")
     Ruta_Clases_SD = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
-        f"Clases_SD.csv")
+        f"Clases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         puntos = np.array(puntos)
@@ -318,7 +320,7 @@ if __name__ == "__main__":
                 puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    longitudes_bases, latitudes_bases = zip(*bases)
+    latitudes_bases, longitudes_bases = zip(*bases)
     if not os.path.exists(Ruta_Capacidades):
         capacidad_bases = np.random.randint(1, capacidad_maxima, size=len(bases))
         np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
@@ -332,7 +334,7 @@ if __name__ == "__main__":
                 capacidad_bases.append(int(numbers))
             capacidad_bases = np.array(capacidad_bases)
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
     if not os.path.exists(Ruta_Clases_Bases):
@@ -409,7 +411,7 @@ if __name__ == "__main__":
     # Graficar el mapa y los puntos
     fig = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',s=60,label='Puntos de Suministro')
     fig.show()
     #Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
@@ -418,18 +420,18 @@ if __name__ == "__main__":
     # Graficar solución
     colores = ['green', 'blue', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'magenta', 'cyan', 'violet','lime', 'gold', 'silver', 'indigo']
     plt.figure(figsize=(10, 6))
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',s=60, label='Puntos de Suministro')
     for k in range(numero_supply_depots):
         SD = np.array([i for i, v in enumerate(Sol_Final) if v == k])
-        color = colores[k]  # Un color por cada iteración
         for j in range(len(SD)):
+            color = colores[[i for i, valor in enumerate(lista_clases_base[SD[0]]) if valor == 1][0]]
             plt.scatter(longitudes_bases[SD[j]], latitudes_bases[SD[j]], color=color, label='Bases')
         if len(SD) > 0:
             plt.plot([longitudes_bases[SD[0]], longitudes_supply_depots[k]],[latitudes_bases[SD[0]], latitudes_supply_depots[k]], color='red')
         else:
             continue
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
     plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    plt.gca().invert_yaxis()
     plt.show()

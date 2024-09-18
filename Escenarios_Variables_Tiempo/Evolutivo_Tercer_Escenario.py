@@ -354,15 +354,17 @@ def OrientacionRectas(p1,p2,p3):    #Función para determinar si un punto está 
 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
+    random.seed(2030)
+    np.random.seed(2030)
     Num_Individuos = 100
-    Num_Generaciones = 100
+    Num_Generaciones = 300
     Tam_Individuos = 200
-    Prob_Padres = 0.1
+    Prob_Padres = 0.5
     Prob_Mutacion = 0.01
     Prob_Cruce = 0.5
 
     mapa_dem = 'PNOA_MDT05_ETRS89_HU30_0560_LID.tif'
-    puntos_interpolado = 25  # Necesarios para calcular la distancia entre puntos en el mapa en 3D
+    puntos_interpolado = 50  # Necesarios para calcular la distancia entre puntos en el mapa en 3D
     distGrid = 1
     # Definir el sistema de coordenadas UTM y WGS84
     crs_utm = CRS.from_epsg(25830)  # EPSG:25830 es UTM zona 30N, ETRS89 (Sistema de referencia geodésica para Europa, propio de este tipo de UTM [EPSG:25830])
@@ -374,11 +376,14 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
-        f"Bases_SD.csv")
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        f"Cap_Bases_SD_1.csv")
+    distancias_Oro = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
-        f"Cap_Bases_SD.csv")
+        f"dist_Tercer_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         puntos = np.array(puntos)
@@ -492,9 +497,6 @@ if __name__ == "__main__":
     with rasterio.open(mapa_dem) as dem:
         dem_data = dem.read(1)  # Leer la primera banda
         dem_data = np.where(dem_data == dem.nodata, np.nan, dem_data)
-        distancias_Oro = os.path.join(
-            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
-            f"dist_Tercer.csv")
         if not os.path.exists(distancias_Oro):
             distancias_3D = Distancia_Base_Supply_Depot_3D(bases_UTM, SD_UTM, dem)
             distancias_3D = np.array(distancias_3D)
@@ -543,37 +545,40 @@ if __name__ == "__main__":
     # Graficar el mapa y los puntos
     fig_1 = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases_2, color='blue', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots_2, color='black', marker='p',label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots_2, color='black', marker='p', s=60,label='Puntos de Suministro')
     fig_1.show()
     # Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
     plt.plot(Costes_Generacion)
     coste.show()
-    # Graficamos solución
-    plt.figure(figsize=(10, 6))
-    plt.imshow(dem_data, cmap='terrain')
-    plt.colorbar(label='Altura (m)')
-    plt.scatter(longitudes_bases, latitudes_bases, color='white', label='Bases')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    #Mapa a usar
+    #plt.figure(figsize=(10, 6))
+    #plt.imshow(dem_data, cmap='terrain')
+    #plt.colorbar(label='Altura (m)')
     #Generamos el río -> Lo hacemos observando el mapa y viendo dónde hay una mayor depresión del terreno
-    for i in range(len(puntos_rio)-1):
-        plt.plot([puntos_rio[i][1], puntos_rio[i+1][1]], [puntos_rio[i][0], puntos_rio[i+1][0]], color='black')
     #Dibujamos muelle
     lon, lat = ~transform * (puente_rio_UTM[1], puente_rio_UTM[0])
     puente_rio = np.array((lat, lon))
-    plt.scatter(puente_rio[1], puente_rio[0],color='black', label='Muelle')
+    #plt.show()
+    # Graficamos solución
+    plt.figure(figsize=(10, 6))
+    plt.scatter(longitudes_bases, latitudes_bases_2, color='blue', label='Bases')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots_2, color='black', marker='p',s=60,label='Puntos de Suministro')
+    for i in range(len(puntos_rio)-1):
+        plt.plot([puntos_rio[i][1], puntos_rio[i+1][1]], [puntos_rio[i][0], puntos_rio[i+1][0]], color='black')
+    plt.scatter(puente_rio[1], puente_rio[0], color='black', label='Muelle')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
+    plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
     #Unimos rectas
     for k in range(numero_supply_depots):
         SD = [i for i,v in enumerate(Sol_Final) if v == k]  #Sacamos bases asociadas a un SD
         if len(SD) > 0: # Porque puede haber bases que no tengan asociado el SD de la iteración que toca
             aux = random.choice(SD)  # Base aleatoria
             if InterseccionRectas(bases_figure[aux], SD_figure[k], puntos_rio):
-                plt.plot([longitudes_bases[aux],puente_rio[1]], [latitudes_bases[aux], puente_rio[0]],color='red')
-                plt.plot([puente_rio[1],longitudes_supply_depots[Sol_Final[aux]]], [puente_rio[0], latitudes_supply_depots[Sol_Final[aux]]],color='red')
+                plt.plot([longitudes_bases[aux],puente_rio[1]], [latitudes_bases_2[aux], puente_rio[0]],color='red')
+                plt.plot([puente_rio[1],longitudes_supply_depots[Sol_Final[aux]]], [puente_rio[0], latitudes_supply_depots_2[Sol_Final[aux]]],color='red')
             else:
-                plt.plot([longitudes_bases[aux],longitudes_supply_depots[Sol_Final[aux]]], [latitudes_bases[aux], latitudes_supply_depots[Sol_Final[aux]]],color='red')
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
-    plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+                plt.plot([longitudes_bases[aux],longitudes_supply_depots[Sol_Final[aux]]], [latitudes_bases_2[aux], latitudes_supply_depots_2[Sol_Final[aux]]],color='red')
+    plt.gca().invert_yaxis()
     plt.show()

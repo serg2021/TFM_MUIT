@@ -403,22 +403,31 @@ def Funcion_Fitness(distancias, poblacion):
         fitness = 0
         for j in range(len(poblacion[i][0])):   #Bucle para recorrer bases que no sean intermediarios
             SD_base = int(poblacion[i][0][j])    #Saco el SD asociado a una base de la población
-            ind_inter = np.where(poblacion[i][0][ind_intermediarios] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
-            for k in ind_inter: #Comprobamos para esos intermediarios sus distancias con la base elegida
-                distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[k])
-                if distancia_base_inter < distancias[SD_base][j]:   #Si esa distancia es menor que la de la base al SD
-                    fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
-                else:
-                    continue
-            fitness += distancias[SD_base][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
+            inter_base = int(poblacion[i][1][j])    #Saco si está asociado a algún intermediario
+            if inter_base == numero_bases:  #Base sin intermediario
+                fitness += distancias[SD_base][j]  # Calculo fitness buscando en la matriz de distancias la distancia asociada
+            else:   #Base con intermediario
+                distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[inter_base])
+                fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
+                fitness += distancias[SD_base][inter_base]  # Calculo fitness buscando en la matriz de distancias la distancia asociada
+            #ind_inter = np.where(poblacion[i][0][ind_intermediarios] == SD_base)[0]   #Buscamos qué intermediarios tienen ese SD asociado
+            #for k in ind_inter: #Comprobamos para esos intermediarios sus distancias con la base elegida
+            #    distancia_base_inter = Distancia_Base_Supply_Depot_2D(bases_inter[j], bases_inter[k])
+            #    if distancia_base_inter < distancias[SD_base][j]:   #Si esa distancia es menor que la de la base al SD
+            #        fitness += distancia_base_inter  # Calculo fitness usando la distancia de la base al intermediario
+            #    else:
+            #        continue
+            #fitness += distancias[SD_base][j]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
         fitness = fitness/numero_bases
         lista_fitness.append(fitness)
     return lista_fitness
 
 if __name__ == "__main__":
     # Definicion de los parámetros del genético
+    random.seed(2030)
+    np.random.seed(2030)
     Num_Individuos = 100
-    Num_Generaciones = 100
+    Num_Generaciones = 300
     Tam_Individuos = 200
     Prob_Padres = 0.5
     Prob_Mutacion = 0.01
@@ -429,16 +438,16 @@ if __name__ == "__main__":
     Costes = []
     numero_bases = 200
     numero_supply_depots = 10
-    capacidad_maxima = 20
+    capacidad_maxima = 18
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
-        f"Bases_SD.csv")
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        f"Bases_SD_1.csv")
     Ruta_Intermediarios = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
-        f"Intermediarios.csv")
+        f"Intermediarios_1.csv")
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
-        f"Cap_Bases_SD.csv")
+        f"Cap_Bases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         np.savetxt(Ruta_Puntos, puntos, delimiter=',')
@@ -469,8 +478,8 @@ if __name__ == "__main__":
     intermediarios = [bases[i] for i in ind_intermediarios]
     ind_bases_antes = np.array([i for i, elemento in enumerate(bases) if elemento not in intermediarios])
     bases = list(set(bases) - set(intermediarios))  #Actualizamos el número de bases sin contar intermediarios
-    longitudes_bases, latitudes_bases = zip(*bases)
-    longitudes_inter, latitudes_inter = zip(*intermediarios)
+    latitudes_bases, longitudes_bases = zip(*bases)
+    latitudes_inter, longitudes_inter = zip(*intermediarios)
     if not os.path.exists(Ruta_Capacidades):
         capacidad_bases[ind_bases_antes] = np.random.randint(1, capacidad_maxima, size=len(bases))
         capacidad_bases[ind_intermediarios] = np.random.randint(10, capacidad_maxima, size=len(intermediarios))
@@ -489,7 +498,7 @@ if __name__ == "__main__":
     #capacidad_bases = np.concatenate((capacidad_bases, capacidad_inters))
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
     bases_inter = puntos[:numero_bases] #Recuperamos datos de bases e intermediarios
-    longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
     distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases_inter, supply_depots) #Obtenemos distancias de bases a supply depots
@@ -526,7 +535,7 @@ if __name__ == "__main__":
 
     Ruta_Solucion = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Combinacion_Problemas',
-        f"Solucion.csv")
+        f"Solucion_6.csv")
     np.savetxt(Ruta_Solucion, Sol_Final, delimiter=',') #Guardamos la solución para el Cadena Suministro + TSP
 
     # Graficar el mapa y los puntos
@@ -534,7 +543,7 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60, label='Puntos de Suministro')
     fig.show()
     #Evolución del coste
     coste = plt.figure(figsize=(10, 6))
@@ -544,9 +553,9 @@ if __name__ == "__main__":
     plt.figure(figsize=(10, 6))
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_inter, latitudes_inter, color='green', label='Intermediarios')
-    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', label='Puntos de Suministro')
+    plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p', s=60, label='Puntos de Suministro')
     bases = puntos[:numero_bases]
-    longitudes_bases, latitudes_bases = zip(*bases)
+    latitudes_bases, longitudes_bases = zip(*bases)
     for v in range(len(ind_intermediarios)):
         if isinstance(Sol_Final[1], float):
             Sol_Final[1] = list(np.zeros(numero_bases))
@@ -560,8 +569,8 @@ if __name__ == "__main__":
             for l in range(len(SD)):
                 if SD[l] in ind_intermediarios:
                     plt.plot([longitudes_bases[SD[l]],longitudes_supply_depots[Sol_Final[0][SD[l]]]], [latitudes_bases[SD[l]], latitudes_supply_depots[Sol_Final[0][SD[l]]]],color='red')
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
     plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    plt.gca().invert_yaxis()
     plt.show()

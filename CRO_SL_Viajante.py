@@ -30,7 +30,7 @@ class Fitness(AbsObjectiveFunc):
     def repair_solution(self, solution):    #Reparación de individuos
         if len(solution) == numero_bases:
             for i in range(numero_bases):
-                if solution[i] > 9 or solution[i] < 0:
+                if solution[i] > numero_supply_depots-1 or solution[i] < 0:
                     solution[i] = np.random.randint(0, numero_supply_depots)
             if (Comprobacion_Individuo(solution, capacidad_bases)):
                 solution = Reparacion_Mayor_Menor(solution, capacidad_bases)
@@ -101,7 +101,7 @@ def Funcion_Fitness_Viajante(distancias, dist, individuo, pob, indices):
         fitness += distancias[indices_orden[j]][indices_orden[k]]    #Calculo fitness buscando en la matriz de distancias la distancia asociada
     fitness += dist[SD][indices[indices_orden[0]]]
     fitness += dist[SD][indices[indices_orden[len(indices_orden) - 1]]]
-    fitness = fitness/len(individuo)
+    fitness = fitness/(len(individuo)+1)
     return fitness
 
 def Comprobacion_Individuo (individuo, capacidades):
@@ -206,7 +206,8 @@ def Reparacion_Mayor_Menor (individuo, capacidades): #Sustituimos una base de un
     return individuo
 
 if __name__ == "__main__":
-
+    random.seed(2038)
+    np.random.seed(2038)
     Pob_Actual = []
     Costes = []
     poblacion_inicial = 100
@@ -216,10 +217,13 @@ if __name__ == "__main__":
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
-        f"Bases_SD.csv")
+        f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
         r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
-        f"Cap_Bases_SD.csv")
+        f"Cap_Bases_SD_1.csv")
+    Ruta_Solucion = os.path.join(
+        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        f"Solucion_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
         puntos = np.array(puntos)
@@ -235,7 +239,7 @@ if __name__ == "__main__":
                 puntos.append(numbers)
     supply_depots = puntos[-numero_supply_depots:]
     bases = puntos[:numero_bases]
-    longitudes_bases, latitudes_bases = zip(*bases)
+    latitudes_bases, longitudes_bases = zip(*bases)
     if not os.path.exists(Ruta_Capacidades):
         capacidad_bases = np.random.randint(1, capacidad_maxima, size=len(bases))
         np.savetxt(Ruta_Capacidades, capacidad_bases, delimiter=',')
@@ -249,7 +253,7 @@ if __name__ == "__main__":
                 capacidad_bases.append(int(numbers))
             capacidad_bases = np.array(capacidad_bases)
     indices_capacidad_bases = sorted(range(len(capacidad_bases)), key=lambda i: capacidad_bases[i])
-    longitudes_supply_depots, latitudes_supply_depots = zip(*supply_depots)
+    latitudes_supply_depots, longitudes_supply_depots = zip(*supply_depots)
     capacidad_supply_depots = np.full(numero_supply_depots,200)
 
     distancias_euclideas = Distancia_Base_Supply_Depot_2D(bases, supply_depots) #Obtenemos distancias de bases a supply depots
@@ -261,7 +265,7 @@ if __name__ == "__main__":
         "popSize": poblacion_inicial, #Población inicial
         "rho": 0.6, #Porcentaje de ocupación de corales del Reef inicial
         "Fb": 0.98, #Proporción de Broadcast Spawning
-        "Fd": 0.2,  #Proporción de Depredación
+        "Fd": 0.5,  #Proporción de Depredación
         "Pd": 0.8,  #Probabilidad de Depredación
         "k": 3, #Número máximo de intentos para que la larva intente asentarse
         "K": 20,    #Número máximo de corales con soluciones duplicadas
@@ -287,13 +291,9 @@ if __name__ == "__main__":
     operators = [
         SubstrateInt("MutSample", {"method": "Gauss", "F": 1, "N": 3}),  # Rand Mutation -> F = Desviación Típica; N = Número de muestras a mutar
         SubstrateInt("Multipoint"),    #Multi-Point Crossover
-        SubstrateInt("BLXalpha", {"F": 0.5}),  #BLX-Alpha -> F = Alpha
-        SubstrateInt("DE/best/1", {"F": 0.7, "Cr": 0.8})   #Differential Evolution -> F = Factor de escalado de la ecuación; Cr = Prob. de Recombinación
+        #SubstrateInt("BLXalpha", {"F": 0.5}),  #BLX-Alpha -> F = Alpha
+        #SubstrateInt("DE/best/1", {"F": 0.7, "Cr": 0.8})   #Differential Evolution -> F = Factor de escalado de la ecuación; Cr = Prob. de Recombinación
     ]
-
-    Ruta_Solucion = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
-        f"Solucion.csv")
     solution_normal = []
     if os.path.exists(Ruta_Solucion):  # Cargamos la solución
         with open(Ruta_Solucion, mode='r') as file:
@@ -302,6 +302,10 @@ if __name__ == "__main__":
                 # Convertir cada elemento de la fila a un número (float o int según sea necesario)
                 numbers = [float(x) for x in fila]
                 solution_normal.append(numbers[0])
+    else:
+        objfunc = Fitness(numero_bases)
+        Coral = CRO_SL(objfunc, operators, params)
+        solution_normal, obj_value = Coral.optimize()
     solution_normal = np.array(solution_normal)
 
     ### AQUÍ COMIENZA EL PROBLEMA DEL VIAJANTE
@@ -315,17 +319,17 @@ if __name__ == "__main__":
         "popSize": Individuos,  # Población inicial
         "rho": 0.6,  # Porcentaje de ocupación de corales del Reef inicial
         "Fb": 0.98,  # Proporción de Broadcast Spawning
-        "Fd": 0.2,  # Proporción de Depredación
+        "Fd": 0.5,  # Proporción de Depredación
         "Pd": 0.8,  # Probabilidad de Depredación
         "k": 3,  # Número máximo de intentos para que la larva intente asentarse
         "K": 20,  # Número máximo de corales con soluciones duplicadas
         "group_subs": True,
         # Si 'True', los corales se reproducen sólo en su mismo substrato, si 'False', se reproducen con toda la población
 
-        "stop_cond": "Ngen",  # Condición de parada
+        "stop_cond": "Neval",  # Condición de parada
         "time_limit": 4000.0,  # Tiempo límite (real, no de CPU) de ejecución
         "Ngen": Generaciones,  # Número de generaciones
-        "Neval": 3e3,  # Número de evaluaciones de la función objetivo
+        "Neval": 15050,  # Número de evaluaciones de la función objetivo
         "fit_target": 50,  # Valor de función objetivo a alcanzar -> Ponemos 50 por poner un valor muy bajo
 
         "verbose": True,  # Informe periódico de cómo va el algoritmo
@@ -342,6 +346,7 @@ if __name__ == "__main__":
         # Determina cómo las diferencias entre las métricas de los substratos afectan la probabilidad de cada una -> Cuanto más pequeña, más amplifica
     }
 
+    contador_aux = 0
     for i in range(numero_supply_depots):
         print("SD: " + str(i))
         indices_bases_SD = [j for j, value in enumerate(solution_normal) if value == i]   #Sacamos índices de las bases asociadas a un SD
@@ -354,7 +359,9 @@ if __name__ == "__main__":
         Coral = CRO_SL(objfunc_Viajante, operators, params_Viajante)
         solution_Viajante, Costes_Viajante = Coral.optimize()
         print("Coste Solución " + str(i) + ": " + str(Costes_Viajante))
+        contador_aux += Costes_Viajante
         Lista_Sol_Final.append(solution_Viajante)
+    print("Media Costes SD: " + str(contador_aux / numero_supply_depots))
 
 
     # Graficar el mapa y los puntos
@@ -372,7 +379,7 @@ if __name__ == "__main__":
     plt.scatter(longitudes_bases, latitudes_bases, color='blue', label='Bases')
     plt.scatter(longitudes_supply_depots, latitudes_supply_depots, color='black', marker='p',
                 label='Puntos de Suministro')
-    for v in range(len(Lista_Sol_Final)):
+    for v in range(len(Lista_Sol_Final)-7):
         color = colores[v % len(colores)]  # Un color por cada iteración
         indices_bases_SD = [j for j, value in enumerate(solution_normal) if value == v]  # Sacamos índices de las bases asociadas a un SD
         indices_ordenados = list(np.argsort(Lista_Sol_Final[v]))  # Ordenamos índices para unir por rectas 2 puntos consecutivos
@@ -382,8 +389,8 @@ if __name__ == "__main__":
         for k in range(0, len(indices_bases_SD_ordenados) - 1):  # Bucle que recorre los valores
             plt.plot([longitudes_bases[indices_bases_SD_ordenados[k]], longitudes_bases[indices_bases_SD_ordenados[k + 1]]],
                 [latitudes_bases[indices_bases_SD_ordenados[k]], latitudes_bases[indices_bases_SD_ordenados[k + 1]]],color=color)
-    plt.xlabel('Longitud')
-    plt.ylabel('Latitud')
-    plt.title('Mapa con Puntos Aleatorios')
+    plt.xlabel('Distancia Horizontal (px/m)')
+    plt.ylabel('Distancia Vertical (px/m)')
     plt.legend(bbox_to_anchor=(0, 0), loc='upper left')
+    plt.gca().invert_yaxis()
     plt.show()

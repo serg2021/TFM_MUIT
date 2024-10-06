@@ -163,10 +163,10 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Bases_SD.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Cap_Bases_SD.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))

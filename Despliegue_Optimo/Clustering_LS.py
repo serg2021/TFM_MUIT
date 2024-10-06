@@ -441,13 +441,13 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 18
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Bases_SD_3.csv")
     Ruta_Intermediarios = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        r'.\Resultados\Cadena_Suministro',
         f"Intermediarios_3.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        r'.\Resultados\Cadena_Suministro',
         f"Cap_Bases_SD_3.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -559,12 +559,14 @@ if __name__ == "__main__":
     supply_depots = np.transpose(supply_depots)
     puntos_def = np.vstack((bases, supply_depots))
     Ruta_Escenario = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Despliegue_Optimo',
+        r'.\Despliegue_Optimo',
         f"Escenario_Optimo_LS.csv")
     np.savetxt(Ruta_Escenario, puntos_def, delimiter=',')  # Guardamos la solución para el problema del viajante
     #Evolución coste
     coste = plt.figure(figsize=(10, 6))
-    plt.plot(Costes_Generacion)
+    plt.plot(Costes_Generacion[270:299])
+    plt.xlabel('Número de ejecuciones (Genético)')
+    plt.ylabel('Distancia (px/m)')
     coste.show()
     # Graficar el mapa y los puntos
     plt.figure(figsize=(10, 6))

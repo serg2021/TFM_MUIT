@@ -312,10 +312,10 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Bases_SD.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Cap_Bases_SD.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -373,7 +373,7 @@ if __name__ == "__main__":
     with rasterio.open(mapa_dem) as dem:
         dem_data = dem.read(1)  # Leer la primera banda
         distancias_Oro = os.path.join(
-            r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+            r'.\Resultados\Orografia',
             f"dist_Oro.csv")
         if not os.path.exists(distancias_Oro):
             distancias_3D = Distancia_Base_Supply_Depot_3D(bases_UTM, SD_UTM, dem)

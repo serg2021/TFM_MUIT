@@ -34,10 +34,10 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Cap_Bases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases))
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     puntos_def = np.vstack((bases, supply_depots))
     Ruta_Escenario = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Despliegue_Optimo',
+        r'.\Despliegue_Optimo',
         f"Escenario_Optimo.csv")
     np.savetxt(Ruta_Escenario, puntos_def, delimiter=',')
     # Graficar el mapa y los puntos

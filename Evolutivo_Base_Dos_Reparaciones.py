@@ -241,10 +241,10 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Cap_Bases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -306,7 +306,7 @@ if __name__ == "__main__":
         print("Base " + str(j) + "-> SD: " + str(Sol_Final[j]))
     print("Coste de la solución: " + str(Coste_Final))
     Ruta_Solucion = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Viajante',
+        r'.\Resultados\Viajante',
         f"Solucion_1.csv")
     np.savetxt(Ruta_Solucion, Sol_Final, delimiter=',') #Guardamos la solución para el problema del viajante
 

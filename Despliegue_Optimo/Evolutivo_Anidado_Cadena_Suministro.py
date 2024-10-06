@@ -514,13 +514,13 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Bases_SD_1.csv")
     Ruta_Intermediarios = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        r'.\Resultados\Cadena_Suministro',
         f"Intermediarios.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        r'.\Resultados\Cadena_Suministro',
         f"Cap_Bases_SD.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -613,7 +613,7 @@ if __name__ == "__main__":
         print("Coste del mejor escenario: " + str(Costes_Escenarios[0]))
     print("Coste de la solución: " + str(Costes_Escenarios[0]))
     Ruta_Escenario = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Despliegue_Optimo',
+        r'.\Despliegue_Optimo',
         f"Escenario_Optimo_Evol_Anidado.csv")
     np.savetxt(Ruta_Escenario, Escenarios[0], delimiter=',')  # Guardamos la solución para el problema del viajante
     supply_depots_def = Escenarios[0][-numero_supply_depots:]

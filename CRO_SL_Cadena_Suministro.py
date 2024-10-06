@@ -280,13 +280,13 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 18
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Bases_SD_1.csv")
     Ruta_Intermediarios = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        r'.\Resultados\Cadena_Suministro',
         f"Intermediarios_1.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Cadena_Suministro',
+        r'.\Resultados\Cadena_Suministro',
         f"Cap_Bases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -399,6 +399,8 @@ if __name__ == "__main__":
     # Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
     plt.plot(Coral.history)
+    plt.xlabel('Número de ejecuciones (CRO-SL)')
+    plt.ylabel('Distancia (px/m)')
     coste.show()
     #Graficar solución
     plt.figure(figsize=(10, 6))

@@ -201,16 +201,16 @@ if __name__ == "__main__":
     capacidad_maxima = 13
     numero_clases = 3
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
+        r'.\Resultados\Tipos_Recursos_A',
         f"Cap_Bases_SD_1.csv")
     Ruta_Clases_Bases = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
+        r'.\Resultados\Tipos_Recursos_A',
         f"Clases_Bases_1.csv")
     Ruta_Clases_SD = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Tipos_Recursos_A',
+        r'.\Resultados\Tipos_Recursos_A',
         f"Clases_SD_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -340,6 +340,8 @@ if __name__ == "__main__":
     #Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
     plt.plot(Coral.history)
+    plt.xlabel('Número de ejecuciones (CRO-SL)')
+    plt.ylabel('Distancia (px/m)')
     coste.show()
     # Graficar solución
     colores = ['green', 'blue', 'red', 'orange', 'purple', 'brown', 'pink', 'yellow', 'magenta', 'cyan', 'violet','lime', 'gold', 'silver', 'indigo']

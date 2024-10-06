@@ -376,13 +376,13 @@ if __name__ == "__main__":
     numero_supply_depots = 10
     capacidad_maxima = 20
     Ruta_Puntos = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Bases_SD_1.csv")
     Ruta_Capacidades = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Resultados\Orografia',
+        r'.\Resultados\Orografia',
         f"Cap_Bases_SD_1.csv")
     distancias_Oro = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
+        r'.\Escenarios_Variables_Tiempo\Distancias_Mapas',
         f"dist_Tercer_1.csv")
     if not os.path.exists(Ruta_Puntos):
         puntos = list(Puntos_Sin_Repetir(numero_bases + numero_supply_depots))
@@ -436,7 +436,7 @@ if __name__ == "__main__":
     puntos_rio = np.array([[1890,3710], [1945,3214], [1808,2406], [2193,1625], [2588,1019], [2864, 744], [3029, 450], [2699,119]])
     long_rio_total = []
     distancias_Rio = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
+        r'.\Escenarios_Variables_Tiempo\Distancias_Mapas',
         f"dist_Rio.csv")
     puntos_rio_aux = np.zeros(puntos_rio.shape)
     for i in range(puntos_rio.shape[0]):    #Los pasamos a UTM para hacer luego las intersecciones de cada tramo del río con las de bases y SD
@@ -459,7 +459,7 @@ if __name__ == "__main__":
             long_rio_total = np.array(long_rio_total)
 
     punto_Rio = os.path.join(
-        r'C:\Users\sergi\OneDrive - Universidad de Alcala\Escritorio\Universidad_Sergio\Master_Teleco\TFM\TFM_MUIT\Escenarios_Variables_Tiempo',
+        r'.\Escenarios_Variables_Tiempo\Distancias_Mapas',
         f"Muelle_Rio.csv")
     if not os.path.exists(punto_Rio):
         with rasterio.open(mapa_dem) as dem:
@@ -550,6 +550,8 @@ if __name__ == "__main__":
     # Evolución del coste de una de las rutas
     coste = plt.figure(figsize=(10, 6))
     plt.plot(Costes_Generacion)
+    plt.xlabel('Número de ejecuciones (Genético)')
+    plt.ylabel('Distancia (px/m)')
     coste.show()
     #Mapa a usar
     #plt.figure(figsize=(10, 6))
